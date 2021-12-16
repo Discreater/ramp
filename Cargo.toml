@@ -7,7 +7,7 @@ build = "build.rs"
 license = "Apache-2.0"
 readme = "README.md"
 keywords = ["bignum","math","number"]
-edition = "2018"
+edition = "2021"
 
 repository = "https://github.com/Aatch/ramp"
 documentation = "https://docs.rs/ramp"
