@@ -87,6 +87,7 @@ mod mul;
 pub mod base;
 pub mod limb;
 pub mod limb_ptr;
+pub mod mtgy;
 pub mod pow;
 use self::limb::Limb;
 

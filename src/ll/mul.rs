@@ -16,14 +16,14 @@
 
 use std::cmp::Ordering;
 
+use super::{overlap, same_or_incr, same_or_separate};
 use crate::ll;
 use crate::ll::limb::Limb;
-use super::{overlap, same_or_separate, same_or_incr};
 use crate::mem;
 
 use crate::ll::limb_ptr::{Limbs, LimbsMut};
 
-const TOOM22_THRESHOLD : i32 = 20;
+const TOOM22_THRESHOLD: i32 = 20;
 
 #[allow(dead_code)]
 unsafe fn mul_1_generic(mut wp: LimbsMut, mut xp: Limbs, mut n: i32, vl: Limb) -> Limb {
@@ -37,7 +37,9 @@ unsafe fn mul_1_generic(mut wp: LimbsMut, mut xp: Limbs, mut n: i32, vl: Limb) -
         *wp = lpl;
 
         n -= 1;
-        if n == 0 { break; }
+        if n == 0 {
+            break;
+        }
 
         wp = wp.offset(1);
         xp = xp.offset(1);
@@ -97,7 +99,9 @@ unsafe fn addmul_1_generic(mut wp: LimbsMut, mut xp: Limbs, mut n: i32, vl: Limb
         *wp = lpl;
 
         n -= 1;
-        if n == 0 { break; }
+        if n == 0 {
+            break;
+        }
 
         wp = wp.offset(1);
         xp = xp.offset(1);
@@ -122,7 +126,7 @@ pub unsafe fn addmul_1(wp: LimbsMut, xp: Limbs, n: i32, vl: Limb) -> Limb {
  */
 #[cfg(asm)]
 #[inline]
-pub unsafe fn addmul_1(mut wp: LimbsMut, xp:  Limbs, n: i32, vl: Limb) -> Limb {
+pub unsafe fn addmul_1(mut wp: LimbsMut, xp: Limbs, n: i32, vl: Limb) -> Limb {
     extern "C" {
         fn ramp_addmul_1(wp: *mut Limb, xp: *const Limb, n: i32, vl: Limb) -> Limb;
     }
@@ -148,7 +152,9 @@ unsafe fn submul_1_generic(mut wp: LimbsMut, mut xp: Limbs, mut n: i32, vl: Limb
         *wp = lpl;
 
         n -= 1;
-        if n == 0 { break; }
+        if n == 0 {
+            break;
+        }
 
         wp = wp.offset(1);
         xp = xp.offset(1);
@@ -210,7 +216,6 @@ pub unsafe fn mul(wp: LimbsMut, xp: Limbs, xs: i32, yp: Limbs, ys: i32) {
 }
 
 unsafe fn mul_basecase(mut wp: LimbsMut, xp: Limbs, xs: i32, mut yp: Limbs, mut ys: i32) {
-
     *wp.offset(xs as isize) = ll::mul_1(wp, xp, xs, *yp);
     wp = wp.offset(1);
     yp = yp.offset(1);
@@ -227,23 +232,24 @@ unsafe fn mul_basecase(mut wp: LimbsMut, xp: Limbs, xs: i32, mut yp: Limbs, mut 
 
 // Helper fn
 #[inline(always)]
-unsafe fn mul_rec(wp: LimbsMut,
-           xp: Limbs, xs: i32,
-           yp: Limbs, ys: i32,
-           scratch: LimbsMut) {
+pub(crate) unsafe fn mul_rec(
+    wp: LimbsMut,
+    xp: Limbs,
+    xs: i32,
+    yp: Limbs,
+    ys: i32,
+    scratch: LimbsMut,
+) {
     if ys < TOOM22_THRESHOLD {
         mul_basecase(wp, xp, xs, yp, ys);
-    } else if (xs * 2) >= (ys*3) {
+    } else if (xs * 2) >= (ys * 3) {
         mul_unbalanced(wp, xp, xs, yp, ys, scratch);
     } else {
         mul_toom22(wp, xp, xs, yp, ys, scratch);
     }
 }
 
-unsafe fn mul_toom22(wp: LimbsMut,
-                     xp: Limbs, xs: i32,
-                     yp: Limbs, ys: i32,
-                     scratch: LimbsMut) {
+unsafe fn mul_toom22(wp: LimbsMut, xp: Limbs, xs: i32, yp: Limbs, ys: i32, scratch: LimbsMut) {
     // Split x into x1, x0 where x = x1*(B^n) + x0
     // Split y into y1, y0 where y = y1*(B^n) + y0
     //
@@ -264,17 +270,26 @@ unsafe fn mul_toom22(wp: LimbsMut,
     //
     // So z1 = zx1*zy1
 
-    debug_assert!(xs >= ys && xs < ys*2,
-                  "assertion failed: `xs >= ys && xs < ys*2` xs: {}, ys: {}", xs, ys);
+    debug_assert!(
+        xs >= ys && xs < ys * 2,
+        "assertion failed: `xs >= ys && xs < ys*2` xs: {}, ys: {}",
+        xs,
+        ys
+    );
 
     let xh = xs >> 1; // Number of high limbs in x
     let nl = xs - xh; // Number of low limbs
     let yh = ys - nl; // Number of high limbs in y
 
     debug_assert!(0 < xh && xh <= nl);
-    debug_assert!(0 < yh && yh <= xh,
-                  "assertion failed: 0 < yh && yh <= xh, xs: {}, ys: {}, xh: {}, yh: {}",
-                  xs, ys, xh, yh);
+    debug_assert!(
+        0 < yh && yh <= xh,
+        "assertion failed: 0 < yh && yh <= xh, xs: {}, ys: {}, xh: {}, yh: {}",
+        xs,
+        ys,
+        xh,
+        yh
+    );
 
     let x0 = xp; // nl limbs
     let y0 = yp; // nl limbs
@@ -294,10 +309,11 @@ unsafe fn mul_toom22(wp: LimbsMut,
         } else {
             ll::sub_n(zx1, x0, x1, nl);
         }
-    } else { // nl > xh
-        if ll::is_zero(x0.offset(xh as isize), nl-xh) && ll::cmp(x0, x1, xh) == Ordering::Less {
+    } else {
+        // nl > xh
+        if ll::is_zero(x0.offset(xh as isize), nl - xh) && ll::cmp(x0, x1, xh) == Ordering::Less {
             ll::sub_n(zx1, x1, x0, xh);
-            ll::zero(zx1.offset(xh as isize), nl-xh); // Zero the extra limbs
+            ll::zero(zx1.offset(xh as isize), nl - xh); // Zero the extra limbs
             z1_neg = true;
         } else {
             ll::sub(zx1, x0, nl, x1, xh);
@@ -312,10 +328,11 @@ unsafe fn mul_toom22(wp: LimbsMut,
         } else {
             ll::sub_n(zy1, y0, y1, nl);
         }
-    } else { // nl > yh
-        if ll::is_zero(y0.offset(yh as isize), nl-yh) && ll::cmp(y0, y1, yh) == Ordering::Less {
+    } else {
+        // nl > yh
+        if ll::is_zero(y0.offset(yh as isize), nl - yh) && ll::cmp(y0, y1, yh) == Ordering::Less {
             ll::sub_n(zy1, y1, y0, yh);
-            ll::zero(zy1.offset(yh as isize), nl-yh); // Zero the extra limbs
+            ll::zero(zy1.offset(yh as isize), nl - yh); // Zero the extra limbs
             z1_neg = !z1_neg;
         } else {
             ll::sub(zy1, y0, nl, y1, yh);
@@ -358,30 +375,44 @@ unsafe fn mul_toom22(wp: LimbsMut,
     // {wp + 2*nl, nl} = HIGH(z0) + HIGH(z2) + LOW(z2) + carry
 
     // LOW(z2) = HIGH(z0) + LOW(z2)
-    let cy = ll::add_n(wp.offset((2*nl) as isize),
-                       z2.as_const(), z0.offset(nl as isize).as_const(),
-                       nl);
+    let cy = ll::add_n(
+        wp.offset((2 * nl) as isize),
+        z2.as_const(),
+        z0.offset(nl as isize).as_const(),
+        nl,
+    );
 
     // LOW(z0) + LOW(z2)
-    let cy2 = cy + ll::add_n(wp.offset(nl as isize),
-                             z0.as_const(), z2.as_const(),
-                             nl);
+    let cy2 = cy + ll::add_n(wp.offset(nl as isize), z0.as_const(), z2.as_const(), nl);
 
     // LOW(z2) + HIGH(z2)
-    let mut cy = cy + ll::add(wp.offset((2*nl) as isize),
-                              z2.as_const(), nl,
-                              z2.offset(nl as isize).as_const(), yh+xh-nl);
+    let mut cy = cy
+        + ll::add(
+            wp.offset((2 * nl) as isize),
+            z2.as_const(),
+            nl,
+            z2.offset(nl as isize).as_const(),
+            yh + xh - nl,
+        );
 
     // Add or subtract `z1` depending on the sign of the real result
     // (we calculate such that it's always positive, easier this way)
     if z1_neg {
-        cy = cy + ll::add_n(wp.offset(nl as isize),
-                            wp.offset(nl as isize).as_const(), z1.as_const(),
-                            2*nl);
+        cy = cy
+            + ll::add_n(
+                wp.offset(nl as isize),
+                wp.offset(nl as isize).as_const(),
+                z1.as_const(),
+                2 * nl,
+            );
     } else {
-        cy = cy - ll::sub_n(wp.offset(nl as isize),
-                            wp.offset(nl as isize).as_const(), z1.as_const(),
-                            2*nl);
+        cy = cy
+            - ll::sub_n(
+                wp.offset(nl as isize),
+                wp.offset(nl as isize).as_const(),
+                z1.as_const(),
+                2 * nl,
+            );
     }
 
     // Apply the carries, has to be done last.
@@ -395,11 +426,15 @@ unsafe fn mul_toom22(wp: LimbsMut,
  * Works basically the same way `mul_1` does, except with `ys` limbs
  * instead of a single limb.
  */
-unsafe fn mul_unbalanced(mut wp: LimbsMut,
-                         mut xp: Limbs, mut xs: i32,
-                         yp: Limbs, ys: i32,
-                         scratch: LimbsMut) {
-    debug_assert!(xs  > ys);
+unsafe fn mul_unbalanced(
+    mut wp: LimbsMut,
+    mut xp: Limbs,
+    mut xs: i32,
+    yp: Limbs,
+    ys: i32,
+    scratch: LimbsMut,
+) {
+    debug_assert!(xs > ys);
 
     mul_toom22(wp, xp, ys, yp, ys, scratch);
 
@@ -419,9 +454,11 @@ unsafe fn mul_unbalanced(mut wp: LimbsMut,
         xs -= ys;
         xp = xp.offset(ys as isize);
         let cy = ll::add_n(wp, wp.as_const(), w_tmp.as_const(), ys);
-        ll::copy_incr(w_tmp.offset(ys as isize).as_const(),
-                      wp.offset(ys as isize),
-                      ys);
+        ll::copy_incr(
+            w_tmp.offset(ys as isize).as_const(),
+            wp.offset(ys as isize),
+            ys,
+        );
         ll::incr(wp.offset(ys as isize), cy);
 
         wp = wp.offset(ys as isize);
@@ -434,9 +471,11 @@ unsafe fn mul_unbalanced(mut wp: LimbsMut,
     }
 
     let cy = ll::add_n(wp, wp.as_const(), w_tmp.as_const(), ys);
-    ll::copy_incr(w_tmp.offset(ys as isize).as_const(),
-                  wp.offset(ys as isize),
-                  xs);
+    ll::copy_incr(
+        w_tmp.offset(ys as isize).as_const(),
+        wp.offset(ys as isize),
+        xs,
+    );
     ll::incr(wp.offset(ys as isize), cy);
 }
 
@@ -449,7 +488,7 @@ unsafe fn mul_unbalanced(mut wp: LimbsMut,
  */
 pub unsafe fn sqr(wp: LimbsMut, xp: Limbs, xs: i32) {
     debug_assert!(xs > 0);
-    debug_assert!(!overlap(wp, 2*xs, xp, xs));
+    debug_assert!(!overlap(wp, 2 * xs, xp, xs));
 
     if xs <= TOOM22_THRESHOLD {
         mul_basecase(wp, xp, xs, xp, xs);
@@ -462,7 +501,7 @@ pub unsafe fn sqr(wp: LimbsMut, xp: Limbs, xs: i32) {
 }
 
 #[inline(always)]
-unsafe fn sqr_rec(wp: LimbsMut, xp: Limbs, xs: i32, scratch: LimbsMut) {
+pub(crate) unsafe fn sqr_rec(wp: LimbsMut, xp: Limbs, xs: i32, scratch: LimbsMut) {
     if xs < TOOM22_THRESHOLD {
         mul_basecase(wp, xp, xs, xp, xs);
     } else {
@@ -506,7 +545,13 @@ unsafe fn sqr_toom2(wp: LimbsMut, xp: Limbs, xs: i32, scratch: LimbsMut) {
 
     // wp now contains the result of (B^2n)*z2 + z0
 
-    cy = cy + ll::add_n(wp.offset(xl as isize), wp.offset(xl as isize).as_const(), z1.as_const(), xs);
+    cy = cy
+        + ll::add_n(
+            wp.offset(xl as isize),
+            wp.offset(xl as isize).as_const(),
+            z1.as_const(),
+            xs,
+        );
 
     ll::incr(wp.offset((xl + xs) as isize), cy);
 }

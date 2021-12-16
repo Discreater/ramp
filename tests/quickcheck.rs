@@ -895,6 +895,67 @@ quickcheck! {
 
         TestResult::from_bool(c1 && c2)
     }
+
+    fn mtgy_cvt(a: BigIntStr, m:BigIntStr) -> TestResult {
+        use ramp::int::mtgy;
+        let a = a.parse().0;
+        let m:Int = m.parse().0;
+        if a < 0 || m < 0 || a >= m || m.is_even() {
+            return TestResult::discard()
+        }
+        let mg = mtgy::MtgyModulus::new(&m);
+        TestResult::from_bool(mg.to_int(&mg.to_mtgy(&a)) == a)
+    }
+
+    fn mtgy_mul(a: BigIntStr, b:BigIntStr, m:BigIntStr) -> TestResult {
+        use ramp::int::mtgy;
+        let a = a.parse().0;
+        let b = b.parse().0;
+        let m:Int = m.parse().0;
+        if a < 0 || b < 0 || m < 0 || a >= m || b >= m || m.is_even() {
+            return TestResult::discard()
+        }
+        let mg = mtgy::MtgyModulus::new(&m);
+        let abar = mg.to_mtgy(&a);
+        let bbar = mg.to_mtgy(&b);
+        let ab_bar = mg.mul(&abar, &bbar);
+        let ab = mg.to_int(&ab_bar);
+        TestResult::from_bool(ab == a*b % &m)
+    }
+
+    fn mtgy_sqr(a: BigIntStr, m:BigIntStr) -> TestResult {
+        use ramp::int::mtgy;
+        let a = a.parse().0;
+        let m:Int = m.parse().0;
+        if a < 0 || m < 0 || a >= m || m.is_even() {
+            return TestResult::discard()
+        }
+        let mg = mtgy::MtgyModulus::new(&m);
+        let abar = mg.to_mtgy(&a);
+        let a2_bar = mg.mul(&abar, &abar);
+        let a2 = mg.to_int(&a2_bar);
+        TestResult::from_bool(a2 == a.square() % &m)
+    }
+
+    fn modpow(a: BigIntStr, b:BigIntStr, m:BigIntStr) -> TestResult {
+        let a = a.parse().0;
+        let b = b.parse().0;
+        let m:Int = m.parse().0;
+        if a < 0 || b <= 0 || m < 0 || a >= m || b >= m || b.bit_length() > 150 {
+            return TestResult::discard()
+        }
+
+        let bitlen = b.bit_length();
+        let mut result = a.clone();
+        for i in (0..bitlen-1).rev() {
+            result = &result * &result % &m;
+            if b.bit(i) {
+                result = &a * result % &m;
+            }
+        }
+
+        TestResult::from_bool(result == a.modpow(&b, &m))
+    }
 }
 
 mod format {
