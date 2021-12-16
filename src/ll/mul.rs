@@ -16,12 +16,12 @@
 
 use std::cmp::Ordering;
 
-use ll;
-use ll::limb::Limb;
+use crate::ll;
+use crate::ll::limb::Limb;
 use super::{overlap, same_or_separate, same_or_incr};
-use mem;
+use crate::mem;
 
-use ll::limb_ptr::{Limbs, LimbsMut};
+use crate::ll::limb_ptr::{Limbs, LimbsMut};
 
 const TOOM22_THRESHOLD : i32 = 20;
 

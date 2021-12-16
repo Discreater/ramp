@@ -14,8 +14,8 @@
 
 #![allow(improper_ctypes)]
 
-use ll::limb::Limb;
-use ll::limb_ptr::{Limbs, LimbsMut};
+use crate::ll::limb::Limb;
+use crate::ll::limb_ptr::{Limbs, LimbsMut};
 use super::{copy_rest, same_or_separate};
 
 #[allow(dead_code)]

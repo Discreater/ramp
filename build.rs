@@ -58,8 +58,8 @@ fn gen_bases(f: &mut File) {
     // entries for them makes the code that uses them simpler.
     f.write_all(
         b"static BASES : [Base; 257] = [
-    /*   0 */ Base { digits_per_limb: 0, big_base: ::ll::limb::Limb(0) },
-    /*   1 */ Base { digits_per_limb: 0, big_base: ::ll::limb::Limb(0) },\n",
+    /*   0 */ Base { digits_per_limb: 0, big_base: crate::ll::limb::Limb(0) },
+    /*   1 */ Base { digits_per_limb: 0, big_base: crate::ll::limb::Limb(0) },\n",
     );
 
     // Generate entries up to base 256, which is the largest base
@@ -101,7 +101,7 @@ fn gen_base(f: &mut File, limb_size: u64, base: usize) {
 
     writeln!(
         f,
-        "    /* {:3} */ Base {{ digits_per_limb: {}, big_base: ::ll::limb::Limb(0x{:x}) }},",
+        "    /* {:3} */ Base {{ digits_per_limb: {}, big_base: crate::ll::limb::Limb(0x{:x}) }},",
         base, digits_per_limb, big_base
     );
 }

@@ -11,8 +11,6 @@ numbers.
 ## Example
 
 ```rust
-
-extern crate ramp;
 use ramp::Int;
 
 // Calculates n!

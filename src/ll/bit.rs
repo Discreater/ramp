@@ -12,10 +12,10 @@
 //    See the License for the specific language governing permissions and
 //    limitations under the License.
 
-use ll::limb::{Limb, BaseInt};
-use ll::{same_or_decr, same_or_incr};
+use crate::ll::limb::{Limb, BaseInt};
+use crate::ll::{same_or_decr, same_or_incr};
 
-use ll::limb_ptr::{Limbs, LimbsMut};
+use crate::ll::limb_ptr::{Limbs, LimbsMut};
 
 /**
  * Performs a bit-shift of the limbs in {xp, xs}, left by `cnt` bits storing the result in {rp,

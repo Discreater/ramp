@@ -16,10 +16,10 @@ use std::cmp::{self, Ordering};
 use std::intrinsics::assume;
 
 use super::{overlap, same_or_separate};
-use ll;
-use ll::limb::{self, Limb};
-use ll::limb_ptr::{Limbs, LimbsMut};
-use mem;
+use crate::ll;
+use crate::ll::limb::{self, Limb};
+use crate::ll::limb_ptr::{Limbs, LimbsMut};
+use crate::mem;
 
 /**
  * Divides the `xs` least-significant limbs at `xp` by `d`, storing the result in {qp, qxn + xs}.

@@ -90,7 +90,7 @@ pub mod limb_ptr;
 pub mod pow;
 use self::limb::Limb;
 
-use ll::limb_ptr::{Limbs, LimbsMut};
+use crate::ll::limb_ptr::{Limbs, LimbsMut};
 
 pub use self::addsub::{add, add_1, add_n, decr, incr, sub, sub_1, sub_n};
 pub use self::bit::{
@@ -268,8 +268,8 @@ pub unsafe fn dump(lbl: &str, mut p: Limbs, mut n: i32) {
 #[cfg(test)]
 mod test {
     use super::*;
-    use ll::limb::Limb;
-    use ll::limb_ptr::{Limbs, LimbsMut};
+    use crate::ll::limb::Limb;
+    use crate::ll::limb_ptr::{Limbs, LimbsMut};
 
     macro_rules! make_limbs {
         (const $nm:ident, $($d:expr),*) => (

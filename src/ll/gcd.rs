@@ -14,8 +14,8 @@
 
 use std::cmp::Ordering;
 
-use ll;
-use ll::limb_ptr::LimbsMut;
+use crate::ll;
+use crate::ll::limb_ptr::LimbsMut;
 
 pub unsafe fn gcd(mut gp: LimbsMut, mut ap: LimbsMut, mut an: i32, mut bp: LimbsMut, mut bn: i32) -> i32 {
     assert!(an >= bn);

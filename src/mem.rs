@@ -21,8 +21,8 @@ use std::io::{self, Write};
 use std::mem;
 use std::ptr;
 
-use ll::limb::Limb;
-use ll::limb_ptr::LimbsMut;
+use crate::ll::limb::Limb;
+use crate::ll::limb_ptr::LimbsMut;
 
 /// Returns a Layout with the given size and pointer-width (i.e., usize) alignment. Panics if
 /// unable to create the Layout.

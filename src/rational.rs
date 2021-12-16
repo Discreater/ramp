@@ -22,9 +22,9 @@ use std::cmp::{Eq, Ord, Ordering, PartialEq, PartialOrd};
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Rem, Sub, SubAssign};
 use std::{fmt, hash};
 
-use ll;
+use crate::ll;
 
-use int::{Int, ParseIntError};
+use crate::int::{Int, ParseIntError};
 
 use ieee754::Ieee754;
 
@@ -961,19 +961,20 @@ impl One for Rational {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
-    use ll::limb::Limb;
+    extern crate test;
+    use crate::ll::limb::Limb;
     use num_traits::Zero;
     use rand::{self, Rng};
     use std;
     use std::hash::{Hash, Hasher};
     use std::str::FromStr;
-    use test::{self, Bencher};
+    use test::Bencher;
 
     use std::cmp::Ordering;
 
-    use int::RandomInt;
+    use crate::int::RandomInt;
 
     macro_rules! assert_mp_eq (
         ($l:expr, $r:expr) => (
@@ -1128,7 +1129,7 @@ mod test {
 
     #[test]
     fn round() {
-        use int::Int;
+        use crate::int::Int;
         macro_rules! round_cases {
             ($(($x:tt, $int:expr)),+) => (
                 [$((Rational::from_str($x).unwrap(),

@@ -423,10 +423,10 @@ macro_rules! test_binop {
       mod binop {
         $(mod $name {
             #![allow(unused_imports)]
-            use ::BigIntStr;
+            use crate::BigIntStr;
             use quickcheck::TestResult;
             use ramp::ll::limb::{Limb, BaseInt};
-            use ::{ RefImpl, RefImplU };
+            use crate::{ RefImpl, RefImplU };
 
             quickcheck! {
                 fn int_int(a: BigIntStr, b: BigIntStr) -> TestResult {
@@ -579,10 +579,10 @@ macro_rules! test_binop_signed {
       mod binop_signed {
         $(mod $name {
             #![allow(unused_imports)]
-            use ::BigIntStr;
+            use crate::BigIntStr;
             use quickcheck::TestResult;
             use ramp::ll::limb::{Limb, BaseInt};
-            use ::{ RefImpl, RefImplU };
+            use crate::{ RefImpl, RefImplU };
 
             quickcheck! {
                 fn i32_int(a: i32, b: BigIntStr) -> TestResult {
@@ -629,7 +629,7 @@ test_binop_signed! {
 }
 
 mod neg {
-    use ::BigIntStr;
+    use crate::BigIntStr;
     use quickcheck::TestResult;
 
     quickcheck! {
@@ -648,7 +648,7 @@ mod neg {
 macro_rules! test_shiftop {
     ($($name: ident: $op: tt, $assign: tt;)*) => {
         $(mod $name {
-            use ::BigIntStr;
+            use crate::BigIntStr;
             use quickcheck::TestResult;
 
             quickcheck! {
@@ -689,7 +689,7 @@ macro_rules! test_cmpop {
         mod cmp {
             mod cmp {
                 // special, because Ord doesn't work with primitives
-                use ::BigIntStr;
+                use crate::BigIntStr;
                 use quickcheck::TestResult;
 
                 quickcheck! {
@@ -706,9 +706,9 @@ macro_rules! test_cmpop {
             }
 
             $(mod $method {
-                use ::BigIntStr;
+                use crate::BigIntStr;
                 use ramp::ll::limb::{Limb, BaseInt};
-                use ::RefImpl;
+                use crate::RefImpl;
 
                 use quickcheck::TestResult;
 
@@ -898,7 +898,7 @@ quickcheck! {
 }
 
 mod format {
-    use ::BigIntStr;
+    use crate::BigIntStr;
     use quickcheck::TestResult;
 
     quickcheck! {

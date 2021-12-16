@@ -22,9 +22,9 @@
 
 use std::intrinsics::assume;
 
-use ll;
-use ll::limb::Limb;
-use ll::limb_ptr::{Limbs, LimbsMut};
+use crate::ll;
+use crate::ll::limb::Limb;
+use crate::ll::limb_ptr::{Limbs, LimbsMut};
 
 /// Information for converting to/from a given base, B. Stored in a table generated
 /// by build.rs

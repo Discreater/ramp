@@ -12,11 +12,11 @@
 //    See the License for the specific language governing permissions and
 //    limitations under the License.
 
-use ll;
-use ll::limb::Limb;
-use mem;
+use crate::ll;
+use crate::ll::limb::Limb;
+use crate::mem;
 
-use ll::limb_ptr::{Limbs, LimbsMut};
+use crate::ll::limb_ptr::{Limbs, LimbsMut};
 
 /**
  * Takes `{ap, an}` to the power of `exp` and stores the result to `wp`. `wp` is

@@ -37,5 +37,5 @@ pub mod traits;
 
 // Re-exports
 
-pub use int::Int;
-pub use int::RandomInt;
+pub use crate::int::Int;
+pub use crate::int::RandomInt;

@@ -30,12 +30,12 @@ use hamming;
 use num_integer::Integer;
 use num_traits::{Num, One, Zero};
 
-use ll;
-use ll::limb::{BaseInt, Limb};
-use ll::limb_ptr::{Limbs, LimbsMut};
+use crate::ll;
+use crate::ll::limb::{BaseInt, Limb};
+use crate::ll::limb_ptr::{Limbs, LimbsMut};
 
-use mem;
-use traits::DivRem;
+use crate::mem;
+use crate::traits::DivRem;
 
 ///
 /// An arbitrary-precision signed integer.
@@ -3830,15 +3830,16 @@ impl<R: Rng> RandomInt for R {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
-    use ll::limb::Limb;
+    extern crate test;
+    use crate::ll::limb::Limb;
+    use crate::traits::DivRem;
     use rand::{self, Rng};
     use std;
     use std::hash::{Hash, Hasher};
     use std::str::FromStr;
-    use test::{self, Bencher};
-    use traits::DivRem;
+    use test::Bencher;
 
     macro_rules! assert_mp_eq (
         ($l:expr, $r:expr) => (
@@ -3929,7 +3930,7 @@ mod test {
 
     #[test]
     fn num_base_digits_pow2() {
-        use ll::base::num_base_digits;
+        use crate::ll::base::num_base_digits;
         let cases = [
             ("10", 2, 4), // 0b 1010
             ("15", 2, 4), // 0b 1111
@@ -3960,7 +3961,7 @@ mod test {
 
     #[test]
     fn num_base_digits() {
-        use ll::base::num_base_digits;
+        use crate::ll::base::num_base_digits;
         let cases = [
             ("0", 15, 1),
             ("0", 58, 1),
