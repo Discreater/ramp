@@ -34,8 +34,7 @@ use ll;
 use ll::limb::{BaseInt, Limb};
 use ll::limb_ptr::{Limbs, LimbsMut};
 
-use alloc::raw_vec::RawVec;
-
+use mem;
 use traits::DivRem;
 
 ///
@@ -141,47 +140,20 @@ impl Int {
         i
     }
 
-    /// Passes a `RawVec` version of this `Int`, which can be manipulated to alter this `Int`'s
-    /// allocation.
-    fn with_raw_vec<F: FnOnce(&mut RawVec<Limb>)>(&mut self, f: F) {
-        unsafe {
-            let old_cap = self.cap as usize;
-            let mut vec = RawVec::from_raw_parts(self.ptr.as_mut(), old_cap);
-            // if `f` panics, let `vec` do the cleaning up, not self.
-            self.cap = 0;
-
-            f(&mut vec);
-
-            // update `self` for any changes that happened
-            // vec.ptr() can't be null, so we can safely unwrap
-            self.ptr = Unique::new(vec.ptr()).unwrap();
-            let new_cap = vec.capacity();
-            assert!(new_cap <= std::u32::MAX as usize);
-            self.cap = new_cap as u32;
-            // ownership has transferred back into `self`, so make
-            // sure that allocation isn't freed by `vec`.
-            std::mem::forget(vec);
-
-            if old_cap < new_cap {
-                // the allocation got larger, new Limbs should be
-                // zero.
-                let self_ptr = self.limbs_uninit();
-                std::ptr::write_bytes(
-                    &mut *self_ptr.offset(old_cap as isize) as *mut _ as *mut u8,
-                    0,
-                    (new_cap - old_cap) * std::mem::size_of::<Limb>(),
-                );
-            }
-        }
-    }
-
     /// Creates an `Int` with the given capacity.
     fn with_capacity(cap: u32) -> Int {
-        let mut ret = Int::zero();
-        if cap != 0 {
-            ret.with_raw_vec(|v| v.reserve_exact(0, cap as usize))
+        if cap == 0 {
+            Int::zero()
+        } else {
+            unsafe {
+                let ptr = mem::allocate(cap as usize);
+                Int {
+                    ptr: Unique::new_unchecked(ptr),
+                    size: 0,
+                    cap,
+                }
+            }
         }
-        ret
     }
 
     /// Returns the sign of this `Int` as either -1, 0 or 1 depending on whether it is negative,
@@ -272,9 +244,14 @@ impl Int {
             size = 1;
         } // Keep space for at least one limb around
 
-        self.with_raw_vec(|v| {
-            v.shrink_to_fit(size);
-        })
+        unsafe {
+            let old_ptr = self.ptr.as_mut() as *mut Limb as *mut u8;
+            let old_cap = (self.cap as usize) * std::mem::size_of::<Limb>();
+            let new_cap = size * std::mem::size_of::<Limb>();
+
+            let new_ptr = mem::reallocate(old_ptr, old_cap, new_cap);
+            self.ptr = Unique::new_unchecked(new_ptr as *mut Limb);
+        }
     }
 
     /// Creates a string containing the value of this `Int` in base `base`.
@@ -765,8 +742,25 @@ impl Int {
     /// Ensures that the `Int` has at least the given capacity.
     fn ensure_capacity(&mut self, cap: u32) {
         if cap > self.cap {
-            let old_cap = self.cap as usize;
-            self.with_raw_vec(|v| v.reserve_exact(old_cap, cap as usize - old_cap))
+            unsafe {
+                let new_ptr = if self.cap > 0 {
+                    let old_ptr = self.ptr.as_mut() as *mut Limb as *mut u8;
+                    let old_cap = (self.cap as usize) * std::mem::size_of::<Limb>();
+                    let new_cap = (cap as usize) * std::mem::size_of::<Limb>();
+                    mem::reallocate(old_ptr, old_cap, new_cap) as *mut Limb
+                } else {
+                    mem::allocate(cap as usize)
+                };
+
+                let mut i = self.cap;
+                while i < cap {
+                    *new_ptr.offset(i as isize) = Limb(0);
+                    i += 1;
+                }
+
+                self.ptr = Unique::new_unchecked(new_ptr);
+                self.cap = cap;
+            }
         }
     }
 
@@ -946,7 +940,11 @@ impl Drop for Int {
     fn drop(&mut self) {
         if self.cap > 0 {
             unsafe {
-                drop(RawVec::from_raw_parts(self.ptr.as_mut(), self.cap as usize));
+                drop(Vec::from_raw_parts(
+                    self.ptr.as_mut(),
+                    self.size as usize,
+                    self.cap as usize,
+                ));
             }
             self.cap = 0;
             self.size = 0;
