@@ -16,6 +16,7 @@ use std;
 use std::cmp::{Ordering, PartialEq, PartialOrd};
 use std::fmt;
 use std::ops::{Add, BitAnd, BitOr, BitXor, Div, Mul, Neg, Not, Rem, Shl, Shr, Sub};
+use std::arch::asm;
 
 use std::intrinsics::assume;
 

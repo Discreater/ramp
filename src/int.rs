@@ -3327,6 +3327,7 @@ impl Int {
     fn inverse_for_powof2(&self, pow2: usize) -> Int {
         let mut y = Int::one();
         for i in 1..(pow2 + 1) {
+            // 2^(i-1) < self * y mod 2^i
             if (Int::one() << (i - 1)) < (self * &y % (Int::one() << i)) {
                 y.set_bit((i - 1) as u32, true);
             }

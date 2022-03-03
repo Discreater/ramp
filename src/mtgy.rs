@@ -36,8 +36,8 @@ use crate::int::Int;
 /// Starting with 17 as a modulus, prepare the modulus helpers.
 ///
 /// ```rust
-/// use framp::int::Int;
-/// use framp::int::mtgy::*;
+/// use ramp::int::Int;
+/// use ramp::int::mtgy::*;
 ///
 /// let m:Int = 17.into();
 /// let modulus = MtgyModulus::new(&m);
@@ -46,8 +46,8 @@ use crate::int::Int;
 /// Convert between Montgomery and natural space:
 ///
 /// ```rust
-/// # use framp::int::Int;
-/// # use framp::int::mtgy::*;
+/// # use ramp::int::Int;
+/// # use ramp::int::mtgy::*;
 /// # let m:Int = 17.into();
 /// # let modulus = MtgyModulus::new(&m);
 /// let a:Int = 5.into();
@@ -59,8 +59,8 @@ use crate::int::Int;
 /// Perform a modular multiplication in Montgomery space:
 ///
 /// ```rust
-/// # use framp::int::Int;
-/// # use framp::int::mtgy::*;
+/// # use ramp::int::Int;
+/// # use ramp::int::mtgy::*;
 /// # let m:Int = 17.into();
 /// # let modulus = MtgyModulus::new(&m);
 /// let a:Int = 5.into();
@@ -76,8 +76,8 @@ use crate::int::Int;
 /// basis is in Montgomery form, the exponent is in natural space.
 ///
 /// ```rust
-/// # use framp::int::Int;
-/// # use framp::int::mtgy::*;
+/// # use ramp::int::Int;
+/// # use ramp::int::mtgy::*;
 /// # let m:Int = 17.into();
 /// # let modulus = MtgyModulus::new(&m);
 /// let a:Int = 5.into();
@@ -109,7 +109,6 @@ impl<'a> MtgyModulus<'a> {
     ///
     /// For the Montgomery form to exists, the modulus has to be odd (and positive).
     /// The constructor will panic otherwise.
-    #[allow(dead_code)]
     pub fn new(modulus: &'a Int) -> MtgyModulus<'a> {
         assert!(!modulus.is_even(), "Montgomery modulus must be odd");
         assert_eq!(modulus.sign(), 1, "Montgomery modulus must be positive");
@@ -117,10 +116,10 @@ impl<'a> MtgyModulus<'a> {
         let limbs_count = (modulus.bit_length() as usize + Limb::BITS - 1) / Limb::BITS;
         let r = Int::one() << (limbs_count * Limb::BITS);
         MtgyModulus {
-            modulus: modulus,
+            modulus,
             modulus_inv0: crate::ll::mtgy::inv1(*(&r - modulus).limbs()),
             limbs: limbs_count,
-            r: r.clone(),
+            r,
         }
     }
 
@@ -227,7 +226,6 @@ impl<'a> MtgyModulus<'a> {
     }
 
     /// Convert an int to its Montgomery form.
-    #[allow(dead_code)]
     pub fn to_mtgy(&self, a: &Int) -> MtgyInt {
         let mut it = (a * &self.r) % self.modulus;
         self.montgomerize(&mut it);
@@ -239,7 +237,6 @@ impl<'a> MtgyModulus<'a> {
     ///
     /// * Panics if the integer is not of the expected size (it is
     /// only likely to happen in case of a mixup of two MtgyModulus).
-    #[allow(dead_code)]
     pub fn to_int(&self, a: &MtgyInt) -> Int {
         assert_eq!(a.0.abs_size(), self.limbs as i32);
         let mut it = unsafe {

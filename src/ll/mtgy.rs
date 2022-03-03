@@ -18,7 +18,14 @@ use crate::mem;
 
 use ll::limb_ptr::{Limbs, LimbsMut};
 
-// w <- a^b [m]
+/// w <- a^b mod n:
+/// - `wp`: the result pointer.
+/// - `r_limbs`: the limbs count of `r`.
+/// - `n`: modulus.
+/// - `nquote0`: 1 / (r - n), because r = 1 << (n.limbs * Limbs::BITS), so (r - n) < Limb::MAX
+/// - `a`: base.
+/// - `bp`: exp
+/// - `bn`: bit size of exp
 pub unsafe fn modpow(
     wp: LimbsMut,
     r_limbs: i32,
@@ -62,17 +69,20 @@ pub unsafe fn modpow(
 
     let exp_bit_length = ll::base::num_base_digits(bp, bn, 2) as usize;
     let block_count = (exp_bit_length + k - 1) / k;
+    // recursive Wk = W(k)
     for i in (0..block_count).rev() {
-        let mut block_value: usize = 0;
+        let mut block_value: usize = 0; // store the value of this block
         for j in 0..k {
-            let p = i * k + j;
+            let p = i * k + j; // the pth bit
             if p < exp_bit_length
                 && (*(bp.offset((p / Limb::BITS) as isize)) >> (p % Limb::BITS)) & Limb(1)
                     == Limb(1)
             {
+                // If the pth bit is 1
                 block_value |= 1 << j;
             }
         }
+        // w^(2^k) = w^64
         for _ in 0..k {
             sqr(wp, r_limbs, wp.as_const(), n, nquote0, t, scratch_mul);
         }
@@ -107,6 +117,7 @@ unsafe fn mul(
 }
 
 #[inline]
+/// Mgty square: a^2 * R^-1 mod n
 unsafe fn sqr(
     wp: LimbsMut,
     r_limbs: i32,
