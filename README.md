@@ -1,3 +1,17 @@
+# RAMP
+
+> **Rust nightly** is required
+
+## Change log of `paillier-b214`
+
+- Remove `RawVec`
+- Add modpow from another crate `framp`
+- Update to Rust 2021
+
+---
+
+> RAW README
+
 # RAMP - Rust Arithmetic in Multiple Precision
 
 [![Build Status](https://travis-ci.org/Aatch/ramp.svg?branch=master)](https://travis-ci.org/Aatch/ramp)
