@@ -17,6 +17,7 @@
 #[path = "mtgy.rs"]
 pub mod mtgy;
 
+use alloc::alloc::Global;
 use rand::Rng;
 use std;
 use std::cmp::{Eq, Ord, Ordering, PartialEq, PartialOrd};
@@ -37,7 +38,7 @@ use crate::ll;
 use crate::ll::limb::{BaseInt, Limb};
 use crate::ll::limb_ptr::{Limbs, LimbsMut};
 
-use crate::mem;
+use crate::raw_vec::RawVec;
 use crate::traits::DivRem;
 
 ///
@@ -143,20 +144,47 @@ impl Int {
         i
     }
 
-    /// Creates an `Int` with the given capacity.
-    fn with_capacity(cap: u32) -> Int {
-        if cap == 0 {
-            Int::zero()
-        } else {
-            unsafe {
-                let ptr = mem::allocate(cap as usize);
-                Int {
-                    ptr: Unique::new_unchecked(ptr),
-                    size: 0,
-                    cap,
-                }
+    /// Passes a `RawVec` version of this `Int`, which can be manipulated to alter this `Int`'s
+    /// allocation.
+    fn with_raw_vec<F: FnOnce(&mut RawVec<Limb>)>(&mut self, f: F) {
+        unsafe {
+            let old_cap = self.cap as usize;
+            let mut vec = RawVec::from_raw_parts_in(self.ptr.as_mut(), old_cap, Global);
+            // if `f` panics, let `vec` do the cleaning up, not self.
+            self.cap = 0;
+
+            f(&mut vec);
+
+            // update `self` for any changes that happened
+            // vec.ptr() can't be null, so we can safely unwrap
+            self.ptr = Unique::new(vec.ptr()).unwrap();
+            let new_cap = vec.capacity();
+            assert!(new_cap <= std::u32::MAX as usize);
+            self.cap = new_cap as u32;
+            // ownership has transferred back into `self`, so make
+            // sure that allocation isn't freed by `vec`.
+            std::mem::forget(vec);
+
+            if old_cap < new_cap {
+                // the allocation got larger, new Limbs should be
+                // zero.
+                let self_ptr = self.limbs_uninit();
+                std::ptr::write_bytes(
+                    &mut *self_ptr.offset(old_cap as isize) as *mut _ as *mut u8,
+                    0,
+                    (new_cap - old_cap) * std::mem::size_of::<Limb>(),
+                );
             }
         }
+    }
+
+    /// Creates an `Int` with the given capacity.
+    fn with_capacity(cap: u32) -> Int {
+        let mut ret = Int::zero();
+        if cap != 0 {
+            ret.with_raw_vec(|v| v.reserve_exact(0, cap as usize))
+        }
+        ret
     }
 
     /// Returns the sign of this `Int` as either -1, 0 or 1 depending on whether it is negative,
@@ -247,14 +275,9 @@ impl Int {
             size = 1;
         } // Keep space for at least one limb around
 
-        unsafe {
-            let old_ptr = self.ptr.as_mut() as *mut Limb as *mut u8;
-            let old_cap = (self.cap as usize) * std::mem::size_of::<Limb>();
-            let new_cap = size * std::mem::size_of::<Limb>();
-
-            let new_ptr = mem::reallocate(old_ptr, old_cap, new_cap);
-            self.ptr = Unique::new_unchecked(new_ptr as *mut Limb);
-        }
+        self.with_raw_vec(|v| {
+            v.shrink_to_fit(size);
+        })
     }
 
     /// Creates a string containing the value of this `Int` in base `base`.
@@ -619,7 +642,7 @@ impl Int {
         }
     }
 
-    /// Returns the number of trailing one bits (i.e. the population count) for this `Int`
+    /// Returns the number of one bits (i.e. the population count) for this `Int`
     ///
     /// If this number is negative, it has infinitely many ones (in two's complement). Therefore,
     /// this method returns `usize::MAX` for negative numbers.
@@ -745,25 +768,8 @@ impl Int {
     /// Ensures that the `Int` has at least the given capacity.
     fn ensure_capacity(&mut self, cap: u32) {
         if cap > self.cap {
-            unsafe {
-                let new_ptr = if self.cap > 0 {
-                    let old_ptr = self.ptr.as_mut() as *mut Limb as *mut u8;
-                    let old_cap = (self.cap as usize) * std::mem::size_of::<Limb>();
-                    let new_cap = (cap as usize) * std::mem::size_of::<Limb>();
-                    mem::reallocate(old_ptr, old_cap, new_cap) as *mut Limb
-                } else {
-                    mem::allocate(cap as usize)
-                };
-
-                let mut i = self.cap;
-                while i < cap {
-                    *new_ptr.offset(i as isize) = Limb(0);
-                    i += 1;
-                }
-
-                self.ptr = Unique::new_unchecked(new_ptr);
-                self.cap = cap;
-            }
+            let old_cap = self.cap as usize;
+            self.with_raw_vec(|v| v.reserve_exact(old_cap, cap as usize - old_cap))
         }
     }
 
@@ -986,10 +992,10 @@ impl Drop for Int {
     fn drop(&mut self) {
         if self.cap > 0 {
             unsafe {
-                drop(Vec::from_raw_parts(
+                drop(RawVec::from_raw_parts_in(
                     self.ptr.as_mut(),
-                    self.size as usize,
                     self.cap as usize,
+                    Global,
                 ));
             }
             self.cap = 0;
@@ -3794,6 +3800,24 @@ impl std::iter::Step for Int {
     }
 }
 
+impl<Rhs> std::iter::Sum<Rhs> for Int
+where
+    Self: Add<Rhs, Output = Self>,
+{
+    fn sum<I: Iterator<Item = Rhs>>(iter: I) -> Self {
+        iter.fold(Self::zero(), |acc, rhs| acc + rhs)
+    }
+}
+
+impl<Rhs> std::iter::Product<Rhs> for Int
+where
+    Self: Mul<Rhs, Output = Self>,
+{
+    fn product<I: Iterator<Item = Rhs>>(iter: I) -> Self {
+        iter.fold(Self::one(), |acc, rhs| acc * rhs)
+    }
+}
+
 /// Trait for generating random `Int`s.
 ///
 /// # Example
@@ -3829,8 +3853,8 @@ impl<R: Rng> RandomInt for R {
     fn gen_uint(&mut self, bits: usize) -> Int {
         assert!(bits > 0);
 
-        let limbs = (bits / &Limb::BITS) as u32;
-        let rem = bits % &Limb::BITS;
+        let limbs = (bits / Limb::BITS) as u32;
+        let rem = bits % Limb::BITS;
 
         let mut i = Int::with_capacity(limbs + 1);
 
@@ -3841,7 +3865,7 @@ impl<R: Rng> RandomInt for R {
 
         if rem > 0 {
             let final_limb = Limb(self.gen());
-            i.push(final_limb >> (&Limb::BITS - rem));
+            i.push(final_limb >> (Limb::BITS - rem));
         }
 
         i.normalize();
@@ -3852,13 +3876,13 @@ impl<R: Rng> RandomInt for R {
     fn gen_int(&mut self, bits: usize) -> Int {
         let i = self.gen_uint(bits);
 
-        let r = if i == Int::zero() {
+       if i == Int::zero() {
             // ...except that if the BigUint is zero, we need to try
             // again with probability 0.5. This is because otherwise,
             // the probability of generating a zero BigInt would be
             // double that of any other number.
             if self.gen() {
-                return self.gen_uint(bits);
+                self.gen_uint(bits)
             } else {
                 i
             }
@@ -3866,9 +3890,7 @@ impl<R: Rng> RandomInt for R {
             -i
         } else {
             i
-        };
-
-        r
+        }
     }
 
     fn gen_uint_below(&mut self, bound: &Int) -> Int {
@@ -5034,6 +5056,22 @@ mod tests {
         assert_eq!(
             Int::backward_checked(a.clone(), 897467216),
             Some(Int::from(-232184))
+        );
+    }
+
+    #[test]
+    fn sum() {
+        assert_eq!(
+            [897235032, 98345].into_iter().sum::<Int>(),
+            Int::from(897333377)
+        );
+    }
+
+    #[test]
+    fn product() {
+        assert_eq!(
+            [897235032, 98345].into_iter().product::<Int>(),
+            Int::from(897235032) * 98345
         );
     }
 

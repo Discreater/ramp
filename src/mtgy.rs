@@ -100,7 +100,7 @@ pub struct MtgyModulus<'a> {
 /// The Montgomery form is valid for one and only one MtgyModulus. It's the
 /// user responsibility to maintain this consistency (aka, don't mix up
 /// MtgyInt from different MtgyModulus).
-pub struct MtgyInt(Int);
+pub struct MtgyInt(pub Int);
 
 impl<'a> MtgyModulus<'a> {
     /// Builds a pre-optimized MtgyModulus to perform.
@@ -232,6 +232,12 @@ impl<'a> MtgyModulus<'a> {
         MtgyInt(it)
     }
 
+    pub fn to_mtgy_raw(&self, a: &Int) -> MtgyInt {
+        let mut it = a.clone();
+        self.montgomerize(&mut it);
+        MtgyInt(it)
+    }
+
     /// Convert a Montgomery int back to Int.
     /// # Panic
     ///
@@ -249,6 +255,12 @@ impl<'a> MtgyModulus<'a> {
         it %= self.modulus;
         Self::pad_to(&mut it, 2 * self.limbs);
         self.redc(&mut it);
+        it.normalize();
+        it
+    }
+
+    pub fn to_int_raw(&self, a: &MtgyInt) -> Int {
+        let mut it = a.0.clone();
         it.normalize();
         it
     }

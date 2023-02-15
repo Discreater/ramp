@@ -61,28 +61,6 @@ pub unsafe fn allocate_bytes(size: usize) -> *mut u8 {
     ret
 }
 
-pub unsafe fn reallocate(old: *mut u8, old_size: usize, new_size: usize) -> *mut u8 {
-    let layout = get_usize_align_layout(old_size);
-    let ret = alloc::realloc(old, layout, new_size);
-    if ret.is_null() {
-        let _ = writeln!(
-            io::stderr(),
-            "Failed to reallocate memory (old size={}, new size={})",
-            old_size,
-            new_size
-        );
-        abort();
-    }
-    if old_size < new_size {
-        ptr::write_bytes(ret.offset(old_size as isize), 0, new_size - old_size);
-    }
-    ret
-}
-
-pub unsafe fn allocate<T>(n: usize) -> *mut T {
-    allocate_bytes(n * mem::size_of::<T>()) as *mut T
-}
-
 pub unsafe fn deallocate_bytes(ptr: ptr::NonNull<u8>, size: usize) {
     let layout = get_usize_align_layout(size);
     alloc::dealloc(ptr.as_ptr(), layout);
