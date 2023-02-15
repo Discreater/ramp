@@ -17,12 +17,13 @@ use crate::ll::{same_or_decr, same_or_incr};
 
 use crate::ll::limb_ptr::{Limbs, LimbsMut};
 
-/**
- * Performs a bit-shift of the limbs in {xp, xs}, left by `cnt` bits storing the result in {rp,
- * rs}. The top-most shifted bits are returned.
- *
- * If `cnt` is greater than or equal to the number of bits in a limb, the result is undefined.
- */
+/// Performs a bit-shift of the limbs in {xp, xs}, left by `cnt` bits storing the result in {rp,
+/// rs}. The top-most shifted bits are returned.
+///
+/// # Safety
+/// 
+/// - If `cnt` is greater than or equal to the number of bits in a limb, the result is undefined.
+/// - See debug_asserts.
 pub unsafe fn shl(mut rp: LimbsMut, mut xp: Limbs, mut xs: i32, cnt: u32) -> Limb {
     debug_assert!(xs >= 1);
     debug_assert!(cnt >= 1);
@@ -54,15 +55,16 @@ pub unsafe fn shl(mut rp: LimbsMut, mut xp: Limbs, mut xs: i32, cnt: u32) -> Lim
 
     *rp = high_limb;
 
-    return ret;
+    ret
 }
 
-/**
- * Performs a bit-shift of the limbs in {xp, xs}, right by `cnt` bits storing the result in {rp,
- * rs}. The bottom-most shifted bits are returned.
- *
- * If `cnt` is greater than or equal to the number of bits in a limb, the result is undefined.
- */
+/// Performs a bit-shift of the limbs in {xp, xs}, right by `cnt` bits storing the result in {rp,
+/// rs}. The bottom-most shifted bits are returned.
+///
+/// # Safety
+/// 
+/// - If `cnt` is greater than or equal to the number of bits in a limb, the result is undefined.
+/// - See debug_asserts.
 pub unsafe fn shr(mut rp: LimbsMut, mut xp: Limbs, mut xs: i32, cnt: u32) -> Limb {
     debug_assert!(xs >= 1);
     debug_assert!(cnt >= 1);
@@ -93,10 +95,14 @@ pub unsafe fn shr(mut rp: LimbsMut, mut xp: Limbs, mut xs: i32, cnt: u32) -> Lim
 
     *rp = low_limb;
 
-    return ret;
+    ret
 }
 
-// Common function for the operations below, since they're all essentially the same
+/// Common function for the operations below, since they're all essentially the same
+///
+/// # Safety
+/// 
+/// See debug_asserts
 #[inline(always)]
 unsafe fn bitop<F: Fn(Limb, Limb) -> Limb>(mut wp: LimbsMut,
                                            mut xp: Limbs, mut yp: Limbs,
@@ -114,86 +120,102 @@ unsafe fn bitop<F: Fn(Limb, Limb) -> Limb>(mut wp: LimbsMut,
     }
 }
 
-/**
- * Performs a bitwise "and" (`&`) of the n least signficant limbs of `xp` and `yp`, storing the
- * result in `wp`
- */
+/// Performs a bitwise "and" (`&`) of the n least signficant limbs of `xp` and `yp`, storing the
+/// result in `wp`
+/// 
+/// # Safety
+/// 
+/// See `bitop`
 pub unsafe fn and_n(wp: LimbsMut,
                     xp: Limbs, yp: Limbs,
                     n: i32) {
     bitop(wp, xp, yp, n, |x, y| x & y);
 }
 
-/**
- * Performs a bitwise and of the n least signficant limbs of `xp` and `yp`, with the limbs of `yp`
- * being first inverted. The result is stored in `wp`.
- *
- * The operation is x & !y
- */
+/// Performs a bitwise and of the n least signficant limbs of `xp` and `yp`, with the limbs of `yp`
+/// being first inverted. The result is stored in `wp`.
+///
+/// The operation is x & !y
+/// 
+/// # Safety
+/// 
+/// See `bitop`
 pub unsafe fn and_not_n(wp: LimbsMut,
                      xp: Limbs, yp: Limbs,
                      n: i32) {
     bitop(wp, xp, yp, n, |x, y| x & !y);
 }
 
-/**
- * Performs a bitwise "nand" of the n least signficant limbs of `xp` and `yp`, storing the
- * result in `wp`
- *
- * The operation is !(x & y)
- */
+/// Performs a bitwise "nand" of the n least signficant limbs of `xp` and `yp`, storing the
+/// result in `wp`
+///
+/// The operation is !(x & y)
+/// 
+/// # Safety
+/// 
+/// See `bitop`
 pub unsafe fn nand_n(wp: LimbsMut,
                      xp: Limbs, yp: Limbs,
                      n: i32) {
     bitop(wp, xp, yp, n, |x, y| !(x & y));
 }
 
-/**
- * Performs a bitwise "or" (`|`) of the n least signficant limbs of `xp` and `yp`, storing the
- * result in `wp`
- */
+/// Performs a bitwise "or" (`|`) of the n least signficant limbs of `xp` and `yp`, storing the
+/// result in `wp`
+/// 
+/// # Safety
+/// 
+/// See `bitop`
 pub unsafe fn or_n(wp: LimbsMut,
                     xp: Limbs, yp: Limbs,
                     n: i32) {
     bitop(wp, xp, yp, n, |x, y| x | y);
 }
 
-/**
- * Performs a bitwise "or" of the n least signficant limbs of `xp` and `yp`, with the limbs of `yp`
- * being first inverted. The result is stored in `wp`.
- */
+/// Performs a bitwise "or" of the n least signficant limbs of `xp` and `yp`, with the limbs of `yp`
+/// being first inverted. The result is stored in `wp`.
+/// 
+/// # Safety
+/// 
+/// See `bitop`
 pub unsafe fn or_not_n(wp: LimbsMut,
                     xp: Limbs, yp: Limbs,
                     n: i32) {
     bitop(wp, xp, yp, n, |x, y| x | !y);
 }
 
-/**
- * Performs a bitwise "nor" of the n least signficant limbs of `xp` and `yp`, storing the
- * result in `wp`
- *
- * The operation is !(x | y)
- */
+/// Performs a bitwise "nor" of the n least signficant limbs of `xp` and `yp`, storing the
+/// result in `wp`
+///
+/// The operation is !(x | y)
+/// 
+/// # Safety
+/// 
+/// See `bitop`
 pub unsafe fn nor_n(wp: LimbsMut,
                     xp: Limbs, yp: Limbs,
                     n: i32) {
     bitop(wp, xp, yp, n, |x, y| !(x | y));
 }
 
-/**
- * Performs a bitwise "xor" (`^`) of the n least signficant limbs of `xp` and `yp`, storing the
- * result in `wp`
- */
+/// Performs a bitwise "xor" (`^`) of the n least signficant limbs of `xp` and `yp`, storing the
+/// result in `wp`
+/// 
+/// # Safety
+/// 
+/// See `bitop`
 pub unsafe fn xor_n(wp: LimbsMut,
                     xp: Limbs, yp: Limbs,
                     n: i32) {
     bitop(wp, xp, yp, n, |x, y| x ^ y);
 }
 
-/**
- * Performs a bitwise inversion ("not") of the n least signficant limbs of `xp`, storing the
- * result in `wp`
- */
+/// Performs a bitwise inversion ("not") of the n least signficant limbs of `xp`, storing the
+/// result in `wp`
+/// 
+/// # Safety
+/// 
+/// See debug_asserts.
 pub unsafe fn not(mut wp: LimbsMut, mut xp: Limbs, n: i32) {
     debug_assert!(same_or_incr(wp, n, xp, n));
 
@@ -206,11 +228,13 @@ pub unsafe fn not(mut wp: LimbsMut, mut xp: Limbs, n: i32) {
     }
 }
 
-/**
- * Computes the two's complement of the `xs` least significant words
- * of `xp`. The result is stored the result in `wp`, and a carry is
- * returned, if there is one.
- */
+/// Computes the two's complement of the `xs` least significant words
+/// of `xp`. The result is stored the result in `wp`, and a carry is
+/// returned, if there is one.
+/// 
+/// # Safety
+/// 
+/// - require xs > 0
 pub unsafe fn twos_complement(mut wp: LimbsMut, mut xp: Limbs, xs: i32) -> Limb {
     let mut i = 0;
     let mut carry = Limb(1);
@@ -227,10 +251,12 @@ pub unsafe fn twos_complement(mut wp: LimbsMut, mut xp: Limbs, xs: i32) -> Limb 
     carry
 }
 
-/**
- * Scans for the first 1 bit starting from the least-significant bit the the most, returning
- * the bit index.
- */
+/// Scans for the first 1 bit starting from the least-significant bit the the most, returning
+/// the bit index.
+/// 
+/// # Safety
+/// 
+/// - require xs > 0
 pub unsafe fn scan_1(mut xp: Limbs, mut xs: i32) -> u32 {
     debug_assert!(xs > 0);
     let mut cnt = 0u32;
@@ -243,13 +269,15 @@ pub unsafe fn scan_1(mut xp: Limbs, mut xs: i32) -> u32 {
     }
     cnt += (*xp).trailing_zeros() as u32;
 
-    return cnt;
+    cnt
 }
 
-/**
- * Scans for the first 0 bit starting from the least-significant bit the the most, returning
- * the bit index.
- */
+/// Scans for the first 0 bit starting from the least-significant bit the the most, returning
+/// the bit index.
+/// 
+/// # Safety
+/// 
+/// - require `xs > 0`
 pub unsafe fn scan_0(mut xp: Limbs, mut xs: i32) -> u32 {
     debug_assert!(xs > 0);
     let mut cnt = 0u32;
@@ -260,11 +288,11 @@ pub unsafe fn scan_0(mut xp: Limbs, mut xs: i32) -> u32 {
         xs -= 1;
         if xs == 0 { return cnt; }
     }
-    let mut last = (*xp).0;
+    let mut last = xp.0;
     while last & 1 != 0 {
         cnt += 1;
         last >>= 1;
     }
 
-    return cnt;
+    cnt
 }

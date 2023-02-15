@@ -18,15 +18,16 @@ use crate::mem;
 
 use crate::ll::limb_ptr::{Limbs, LimbsMut};
 
-/**
- * Takes `{ap, an}` to the power of `exp` and stores the result to `wp`. `wp` is
- * assumed to have enough space to store the result (which can be calculated using
- * `num_pow_limbs`
- *
- * `{wp, an*exp}` must be disjoint from `{ap, an}`.
- * `{ap, an}` must not be zero.
- * `exp` must be greater than 2
- */
+/// Takes `{ap, an}` to the power of `exp` and stores the result to `wp`. 
+///
+///  # Safety
+///
+/// `wp` is assumed to have enough space to store the result (which can be
+/// calculated using `num_pow_limbs`.
+/// 
+/// `{wp, an*exp}` must be disjoint from `{ap, an}`.
+/// `{ap, an}` must not be zero.
+/// `exp` must be greater than 2
 pub unsafe fn pow(mut wp: LimbsMut, mut ap: Limbs, mut an: i32, mut exp: u32) {
     debug_assert!(exp > 2);
     debug_assert!(!ll::is_zero(ap, an));
@@ -106,7 +107,6 @@ pub unsafe fn pow(mut wp: LimbsMut, mut ap: Limbs, mut an: i32, mut exp: u32) {
         bn = ll::normalize(scratch.as_const(), bn + bn);
 
         ll::copy_incr(scratch.as_const(), bp, bn);
-
     }
 
     if shift > 0 {
@@ -119,6 +119,10 @@ pub unsafe fn pow(mut wp: LimbsMut, mut ap: Limbs, mut an: i32, mut exp: u32) {
 
 /// Calculates the number of limbs required to store the result of taking
 /// `{xp, xn}` to the power of `exp`
+///
+/// # Safety
+///
+/// require `xn` >= 1
 pub unsafe fn num_pow_limbs(xp: Limbs, xn: i32, exp: u32) -> i32 {
     // This is a better approximation of log_b(x^e) than simply using the
     // the number of digits, n.

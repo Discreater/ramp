@@ -39,6 +39,10 @@ macro_rules! api {
         impl $ty {
             /// Create a new instance, pointing at `base` and valid
             /// from `base.offset(start)` to `base.offset(end)`.
+            /// 
+            /// # Safety
+            /// 
+            /// - `base` must be valid
             pub unsafe fn new(base: $ptr, start: i32, end: i32) -> $ty {
                 $ty {
                     ptr: base,
@@ -48,6 +52,10 @@ macro_rules! api {
 
             /// Move `self` to point to the `x`th Limbs from the
             /// current location.
+            /// 
+            /// # Safety
+            /// 
+            /// - pointer after offset must be valid
             #[inline]
             pub unsafe fn offset(self, x: isize) -> $ty {
                 debug_assert!(self.bounds.offset_valid(self.ptr as usize, x),
@@ -137,7 +145,7 @@ impl Bounds {
         let bytes = offset * mem::size_of::<Limb>() as isize;
         let new = ptr.wrapping_add(bytes as usize);
         // an offset can point to the limit (i.e. one byte past the end)
-        self.lo <= new && new <= self.hi
+        (self.lo..=self.hi).contains(&new)
     }
 }
 #[cfg(not(debug_assertions))]

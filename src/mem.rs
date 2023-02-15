@@ -46,14 +46,9 @@ unsafe fn get_usize_align_layout(size: usize) -> alloc::Layout {
 
 pub unsafe fn allocate_bytes(size: usize) -> *mut u8 {
     let layout = get_usize_align_layout(size);
-    let ret = alloc::alloc_zeroed(layout.clone());
+    let ret = alloc::alloc_zeroed(layout);
     if ret.is_null() {
-        writeln!(
-            io::stderr(),
-            "Failed to allocate memory (layout={:?})",
-            layout,
-        )
-        .unwrap();
+        eprintln!("Failed to allocate memory (layout={:?})", layout);
         abort();
     };
 
@@ -94,7 +89,7 @@ impl TmpAllocator {
 
         self.mark = mark;
 
-        ptr.offset(mem::size_of::<Marker>() as isize)
+        ptr.add(mem::size_of::<Marker>())
     }
 
     /// Allocate space for n limbs

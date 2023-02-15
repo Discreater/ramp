@@ -191,12 +191,10 @@ impl Int {
     /// zero, or positive, respectively.
     #[inline(always)]
     pub fn sign(&self) -> i32 {
-        if self.size == 0 {
-            0
-        } else if self.size < 0 {
-            -1
-        } else {
-            1
+        match self.size.cmp(&0) {
+            Ordering::Equal => 0,
+            Ordering::Less => -1,
+            Ordering::Greater => 1,
         }
     }
 
@@ -213,7 +211,7 @@ impl Int {
     #[inline]
     pub fn to_single_limb(&self) -> Limb {
         if self.sign() == 0 {
-            return Limb(0);
+            Limb(0)
         } else {
             return unsafe { *self.ptr.as_ref() };
         }
@@ -227,12 +225,9 @@ impl Int {
 
     /// Compares the absolute value of this `Int` with the absolute value of another.
     pub fn abs_cmp(&self, other: &Int) -> Ordering {
-        if self.abs_size() > other.abs_size() {
-            Ordering::Greater
-        } else if self.abs_size() < other.abs_size() {
-            Ordering::Less
-        } else {
-            unsafe { ll::cmp(self.limbs(), other.limbs(), self.abs_size()) }
+        match self.abs_size().cmp(&other.abs_size()) {
+            Ordering::Equal => unsafe { ll::cmp(self.limbs(), other.limbs(), self.abs_size()) },
+            ord => ord,
         }
     }
 
@@ -293,7 +288,7 @@ impl Int {
             return "0".to_string();
         }
 
-        if base < 2 || base > 36 {
+        if !(2..=36).contains(&base) {
             panic!("Invalid base: {}", base);
         }
 
@@ -338,7 +333,7 @@ impl Int {
 
     /// Creates a new Int from the given string in base `base`.
     pub fn from_str_radix(mut src: &str, base: u8) -> Result<Int, ParseIntError> {
-        if base < 2 || base > 36 {
+        if !(2..=36).contains(&base) {
             panic!("Invalid base: {}", base);
         }
 
@@ -348,7 +343,7 @@ impl Int {
             src = &src[1..];
         }
 
-        if src.len() == 0 {
+        if src.is_empty() {
             return Err(ParseIntError {
                 kind: ErrorKind::Empty,
             });
@@ -357,7 +352,7 @@ impl Int {
         // Strip leading zeros
         let zeros = src.chars().take_while(|&digit| digit == '0').count();
         src = &src[zeros..];
-        if src.len() == 0 {
+        if src.is_empty() {
             return Ok(Int::zero());
         }
 
@@ -552,7 +547,7 @@ impl Int {
             Int::zero()
         } else if self.abs_size() == 1 {
             let l = self.to_single_limb();
-            self = self * l;
+            self *= l;
             if s == -1 {
                 self.abs()
             } else if s == 1 {
@@ -817,7 +812,7 @@ impl Int {
 
         let high_limb = unsafe { *self.ptr.as_ptr().offset((self.abs_size() - 1) as isize) };
 
-        return high_limb != 0;
+        high_limb != 0
     }
 
     /// Negates this `Int` using two's complement, i.e. `!self + 1`.
@@ -935,7 +930,7 @@ impl Int {
 
         let j = modulus.trailing_zeros() as usize;
         if j + 1 == modulus.bit_length() as usize {
-            return self.modpow2(&exp, j);
+            return self.modpow2(exp, j);
         }
 
         let q = modulus >> j;
@@ -1040,25 +1035,24 @@ impl Eq for Int {}
 impl Ord for Int {
     #[inline]
     fn cmp(&self, other: &Int) -> Ordering {
-        if self.size < other.size {
-            Ordering::Less
-        } else if self.size > other.size {
-            Ordering::Greater
-        } else {
-            // Same number of digits and same sign
-            // Check for zero
-            if self.size == 0 {
-                return Ordering::Equal;
-            }
-            unsafe {
-                // If both are positive, do `self cmp other`, if both are
-                // negative, do `other cmp self`
-                if self.sign() == 1 {
-                    ll::cmp(self.limbs(), other.limbs(), self.abs_size())
-                } else {
-                    ll::cmp(other.limbs(), self.limbs(), self.abs_size())
+        match self.size.cmp(&other.size) {
+            Ordering::Equal => {
+                // Same number of digits and same sign
+                // Check for zero
+                if self.size == 0 {
+                    return Ordering::Equal;
+                }
+                unsafe {
+                    // If both are positive, do `self cmp other`, if both are
+                    // negative, do `other cmp self`
+                    if self.sign() == 1 {
+                        ll::cmp(self.limbs(), other.limbs(), self.abs_size())
+                    } else {
+                        ll::cmp(other.limbs(), self.limbs(), self.abs_size())
+                    }
                 }
             }
+            ord => ord,
         }
     }
 }
@@ -1077,12 +1071,9 @@ impl PartialOrd<Limb> for Int {
             return Some(Ordering::Equal);
         }
 
-        if self.size < 1 {
-            Some(Ordering::Less)
-        } else if self.size > 1 {
-            Some(Ordering::Greater)
-        } else {
-            (*self.limbs()).partial_cmp(other)
+        match self.size.cmp(&1) {
+            Ordering::Equal => (*self.limbs()).partial_cmp(other),
+            ord => Some(ord),
         }
     }
 }
@@ -1227,21 +1218,25 @@ impl<'a> AddAssign<&'a Int> for Int {
             // of the two numbers and subtract the smaller one.
 
             unsafe {
-                let (xp, xs, yp, ys) = if self.abs_size() > other.abs_size() {
-                    (self.limbs(), self.size, other.limbs(), other.size)
-                } else if self.abs_size() < other.abs_size() {
-                    self.ensure_capacity(other.abs_size() as u32);
-                    (other.limbs(), other.size, self.limbs(), self.size)
-                } else {
-                    match self.abs_cmp(other) {
-                        Ordering::Equal => {
-                            // They're equal, but opposite signs, so the result
-                            // will be zero, clear `self` and return
-                            self.size = 0;
-                            return;
+                let (xp, xs, yp, ys) = match self.abs_size().cmp(&other.abs_size()) {
+                    Ordering::Greater => (self.limbs(), self.size, other.limbs(), other.size),
+                    Ordering::Less => {
+                        self.ensure_capacity(other.abs_size() as u32);
+                        (other.limbs(), other.size, self.limbs(), self.size)
+                    }
+                    Ordering::Equal => {
+                        match self.abs_cmp(other) {
+                            Ordering::Equal => {
+                                // They're equal, but opposite signs, so the result
+                                // will be zero, clear `self` and return
+                                self.size = 0;
+                                return;
+                            }
+                            Ordering::Greater => {
+                                (self.limbs(), self.size, other.limbs(), other.size)
+                            }
+                            Ordering::Less => (other.limbs(), other.size, self.limbs(), self.size),
                         }
-                        Ordering::Greater => (self.limbs(), self.size, other.limbs(), other.size),
-                        Ordering::Less => (other.limbs(), other.size, self.limbs(), self.size),
                     }
                 };
 
@@ -1300,7 +1295,7 @@ impl Add<Int> for Int {
             (other, &self)
         };
 
-        return x.add(y);
+        x.add(y)
     }
 }
 
@@ -1444,7 +1439,7 @@ impl<'a> SubAssign<&'a Int> for Int {
 
                 let _borrow = ll::sub(ptr, xp, xs.abs(), yp, ys.abs());
                 debug_assert!(_borrow == 0);
-                self.size = if flip { xs * -1 } else { xs };
+                self.size = if flip { -xs } else { xs };
             }
 
             self.normalize();
@@ -1653,7 +1648,7 @@ impl<'a, 'b> Mul<&'a Int> for &'b Int {
 
             // Top limb may be zero
             out.normalize();
-            return out;
+            out
         }
     }
 }
@@ -1902,7 +1897,7 @@ impl DivRem<Limb> for Int {
         let rem =
             unsafe { ll::divrem_1(self.limbs_mut(), 0, self.limbs(), self.abs_size(), other) };
         self.normalize();
-        return (self, rem);
+        (self, rem)
     }
 }
 
@@ -2006,10 +2001,10 @@ impl ShlAssign<usize> for Int {
             return;
         }
 
-        if cnt >= Limb::BITS as usize {
-            let extra_limbs = (cnt / Limb::BITS as usize) as u32;
+        if cnt >= Limb::BITS {
+            let extra_limbs = (cnt / Limb::BITS) as u32;
             debug_assert!(extra_limbs >= 1);
-            cnt = cnt % Limb::BITS as usize;
+            cnt %= Limb::BITS;
 
             let size = self.abs_size() as u32;
             // Extend for the extra limbs, then another one for any potential extra limbs
@@ -2025,7 +2020,7 @@ impl ShlAssign<usize> for Int {
             self.size += (extra_limbs as i32) * self.sign();
         }
 
-        debug_assert!(cnt < Limb::BITS as usize);
+        debug_assert!(cnt < Limb::BITS);
 
         if cnt == 0 {
             return;
@@ -2072,15 +2067,15 @@ impl ShrAssign<usize> for Int {
             return;
         }
 
-        if cnt >= Limb::BITS as usize {
-            let removed_limbs = (cnt / Limb::BITS as usize) as u32;
+        if cnt >= Limb::BITS {
+            let removed_limbs = (cnt / Limb::BITS) as u32;
             let size = self.abs_size();
             if removed_limbs as i32 >= size {
                 *self = Int::zero();
                 return;
             }
             debug_assert!(removed_limbs > 0);
-            cnt = cnt % Limb::BITS as usize;
+            cnt %= Limb::BITS;
 
             unsafe {
                 let ptr = self.limbs_mut();
@@ -2096,7 +2091,7 @@ impl ShrAssign<usize> for Int {
             }
         }
 
-        debug_assert!(cnt < Limb::BITS as usize);
+        debug_assert!(cnt < Limb::BITS);
         if cnt == 0 {
             return;
         }
@@ -2259,7 +2254,7 @@ fn bitop_neg(mut a: Int, mut b: Int, op: BitOp) -> Int {
         }
     }
     a.normalize();
-    return a;
+    a
 }
 
 // do a bit operation on `a` and `b`.
@@ -2332,7 +2327,7 @@ fn bitop_limb(a: &mut Int, b: Limb, signed: bool, op: BitOp) {
     a.normalize();
 }
 
-impl<'a> BitAnd<Limb> for Int {
+impl BitAnd<Limb> for Int {
     type Output = Int;
 
     fn bitand(mut self, other: Limb) -> Int {
@@ -2351,7 +2346,7 @@ impl<'a> BitAnd<&'a Int> for Int {
     type Output = Int;
 
     fn bitand(mut self, other: &'a Int) -> Int {
-        if let Ok(_) = bitop_ref(&mut self, other, BitOp::And) {
+        if bitop_ref(&mut self, other, BitOp::And).is_ok() {
             self
         } else {
             bitop_neg(self, other.clone(), BitOp::And)
@@ -2381,7 +2376,7 @@ impl BitAnd<Int> for Int {
     type Output = Int;
 
     fn bitand(mut self, other: Int) -> Int {
-        if let Ok(_) = bitop_ref(&mut self, &other, BitOp::And) {
+        if bitop_ref(&mut self, &other, BitOp::And).is_ok() {
             self
         } else {
             bitop_neg(self, other, BitOp::And)
@@ -2392,7 +2387,7 @@ impl BitAnd<Int> for Int {
 impl BitAndAssign<Int> for Int {
     #[inline]
     fn bitand_assign(&mut self, other: Int) {
-        if let Err(_) = bitop_ref(self, &other, BitOp::And) {
+        if bitop_ref(self, &other, BitOp::And).is_err() {
             let res = &*self & other;
             *self = res;
         }
@@ -2401,7 +2396,7 @@ impl BitAndAssign<Int> for Int {
 impl<'a> BitAndAssign<&'a Int> for Int {
     #[inline]
     fn bitand_assign(&mut self, other: &'a Int) {
-        if let Err(_) = bitop_ref(self, other, BitOp::And) {
+        if bitop_ref(self, other, BitOp::And).is_err() {
             let res = &*self & other;
             *self = res;
         }
@@ -2427,7 +2422,7 @@ impl<'a> BitOr<&'a Int> for Int {
     type Output = Int;
 
     fn bitor(mut self, other: &'a Int) -> Int {
-        if let Ok(_) = bitop_ref(&mut self, other, BitOp::Or) {
+        if bitop_ref(&mut self, other, BitOp::Or).is_ok() {
             self
         } else {
             bitop_neg(self, other.clone(), BitOp::Or)
@@ -2458,7 +2453,7 @@ impl BitOr<Int> for Int {
 
     #[inline]
     fn bitor(mut self, other: Int) -> Int {
-        if let Ok(_) = bitop_ref(&mut self, &other, BitOp::Or) {
+        if bitop_ref(&mut self, &other, BitOp::Or).is_ok() {
             self
         } else {
             bitop_neg(self, other, BitOp::Or)
@@ -2469,7 +2464,7 @@ impl BitOr<Int> for Int {
 impl BitOrAssign<Int> for Int {
     #[inline]
     fn bitor_assign(&mut self, other: Int) {
-        if let Err(_) = bitop_ref(self, &other, BitOp::Or) {
+        if bitop_ref(self, &other, BitOp::Or).is_err() {
             let res = &*self | other;
             *self = res;
         }
@@ -2478,14 +2473,14 @@ impl BitOrAssign<Int> for Int {
 impl<'a> BitOrAssign<&'a Int> for Int {
     #[inline]
     fn bitor_assign(&mut self, other: &'a Int) {
-        if let Err(_) = bitop_ref(self, &other, BitOp::Or) {
+        if bitop_ref(self, other, BitOp::Or).is_err() {
             let res = &*self | other;
             *self = res;
         }
     }
 }
 
-impl<'a> BitXor<Limb> for Int {
+impl BitXor<Limb> for Int {
     type Output = Int;
 
     fn bitxor(mut self, other: Limb) -> Int {
@@ -2504,7 +2499,7 @@ impl<'a> BitXor<&'a Int> for Int {
     type Output = Int;
 
     fn bitxor(mut self, other: &'a Int) -> Int {
-        if let Ok(_) = bitop_ref(&mut self, other, BitOp::Xor) {
+        if bitop_ref(&mut self, other, BitOp::Xor).is_ok() {
             self
         } else {
             bitop_neg(self, other.clone(), BitOp::Xor)
@@ -2535,7 +2530,7 @@ impl BitXor<Int> for Int {
 
     #[inline]
     fn bitxor(mut self, other: Int) -> Int {
-        if let Ok(_) = bitop_ref(&mut self, &other, BitOp::Xor) {
+        if bitop_ref(&mut self, &other, BitOp::Xor).is_ok() {
             self
         } else {
             bitop_neg(self, other, BitOp::Xor)
@@ -2546,7 +2541,7 @@ impl BitXor<Int> for Int {
 impl BitXorAssign<Int> for Int {
     #[inline]
     fn bitxor_assign(&mut self, other: Int) {
-        if let Err(_) = bitop_ref(self, &other, BitOp::Xor) {
+        if bitop_ref(self, &other, BitOp::Xor).is_err() {
             let res = &*self ^ other;
             *self = res;
         }
@@ -2555,7 +2550,7 @@ impl BitXorAssign<Int> for Int {
 impl<'a> BitXorAssign<&'a Int> for Int {
     #[inline]
     fn bitxor_assign(&mut self, other: &'a Int) {
-        if let Err(_) = bitop_ref(self, &other, BitOp::Xor) {
+        if bitop_ref(self, other, BitOp::Xor).is_err() {
             let res = &*self ^ other;
             *self = res;
         }
@@ -3242,12 +3237,10 @@ impl PartialOrd<i32> for Int {
     #[inline]
     fn partial_cmp(&self, &other: &i32) -> Option<Ordering> {
         let self_sign = self.sign();
-        let other_sign = if other < 0 {
-            -1
-        } else if other > 0 {
-            1
-        } else {
-            0
+        let other_sign = match other.cmp(&0) {
+            Ordering::Less => -1,
+            Ordering::Greater => 1,
+            Ordering::Equal => 0,
         };
 
         // Both are equal
@@ -3255,24 +3248,23 @@ impl PartialOrd<i32> for Int {
             return Some(Ordering::Equal);
         }
 
-        let ord = if self_sign > other_sign {
-            Ordering::Greater
-        } else if self_sign < other_sign {
-            Ordering::Less
-        } else {
-            // Now both signs are the same, and non-zero
+        let ord = match self_sign.cmp(&other_sign) {
+            Ordering::Equal => {
+                // Now both signs are the same, and non-zero
 
-            if self_sign < 0 {
-                if self.abs_size() > 1 {
-                    Ordering::Less
+                if self_sign < 0 {
+                    if self.abs_size() > 1 {
+                        Ordering::Less
+                    } else {
+                        self.to_single_limb()
+                            .cmp(&Limb(other.abs() as BaseInt))
+                            .reverse()
+                    }
                 } else {
-                    self.to_single_limb()
-                        .cmp(&Limb(other.abs() as BaseInt))
-                        .reverse()
+                    return self.partial_cmp(&Limb(other.abs() as BaseInt));
                 }
-            } else {
-                return self.partial_cmp(&Limb(other.abs() as BaseInt));
             }
+            ord => ord,
         };
 
         Some(ord)
@@ -3289,7 +3281,7 @@ impl PartialOrd<Int> for i32 {
 impl PartialEq<usize> for Int {
     #[inline]
     fn eq(&self, &other: &usize) -> bool {
-        return self.eq(&Limb(other as BaseInt));
+        self.eq(&Limb(other as BaseInt))
     }
 }
 
@@ -3320,7 +3312,7 @@ impl Int {
         let mut result = Int::one();
         let mut base_to_pow_of_2: Int = self & &mask;
         for i in 0..exp.bit_length() {
-            if exp.bit(i as u32) {
+            if exp.bit(i) {
                 result *= &base_to_pow_of_2;
                 result &= &mask;
             }
@@ -3344,8 +3336,8 @@ impl Int {
     fn odd_modpow(&self, exp: &Int, modulus: &Int) -> Int {
         let mont = mtgy::MtgyModulus::new(modulus);
         let base = mont.to_mtgy(self);
-        let result = mont.pow(&base, &exp);
-        return mont.to_int(&result);
+        let result = mont.pow(&base, exp);
+        mont.to_int(&result)
     }
 }
 
@@ -3449,25 +3441,25 @@ impl PartialOrd<Int> for u64 {
 
 impl PartialEq<i64> for Int {
     fn eq(&self, &other: &i64) -> bool {
-        eq_64(self, other.abs() as u64, other < 0)
+        eq_64(self, other.unsigned_abs(), other < 0)
     }
 }
 
 impl PartialEq<Int> for i64 {
     fn eq(&self, other: &Int) -> bool {
-        eq_64(other, self.abs() as u64, *self < 0)
+        eq_64(other, self.unsigned_abs(), *self < 0)
     }
 }
 
 impl PartialOrd<i64> for Int {
     fn partial_cmp(&self, &other: &i64) -> Option<Ordering> {
-        Some(cmp_64(self, other.abs() as u64, other < 0))
+        Some(cmp_64(self, other.unsigned_abs(), other < 0))
     }
 }
 
 impl PartialOrd<Int> for i64 {
     fn partial_cmp(&self, other: &Int) -> Option<Ordering> {
-        Some(cmp_64(other, self.abs() as u64, *self < 0).reverse())
+        Some(cmp_64(other, self.unsigned_abs(), *self < 0).reverse())
     }
 }
 
@@ -3480,7 +3472,7 @@ macro_rules! impl_from_prim (
                 } if val == <$t>::min_value() {
                     let shift = val.trailing_zeros() as usize;
                     let mut i = Int::one();
-                    i = i << shift;
+                    i <<= shift;
                     return -i;
                 }
 
@@ -3647,7 +3639,7 @@ macro_rules! impl_from_for_prim (
                         let limb_size = Limb::BITS as u32;
                         let mut acc: $t = 0;
                         for j in 0..num_limbs_to_copy {
-                            let limb = unsafe { (*i.ptr.as_ptr().offset(j as isize)).0 } as $t;
+                            let limb = unsafe { (*i.ptr.as_ptr().add(j)).0 } as $t;
                             acc |= limb.wrapping_shl(limb_size * (j as u32));
                         }
 
@@ -3685,7 +3677,7 @@ macro_rules! impl_from_for_prim (
                         let limb_size = Limb::BITS as u32;
                         let mut acc: $t = 0;
                         for j in 0..num_limbs_to_copy {
-                            let limb = unsafe { (*i.ptr.as_ptr().offset(j as isize)).0 } as $t;
+                            let limb = unsafe { (*i.ptr.as_ptr().add(j)).0 } as $t;
                             acc |= limb.wrapping_shl(limb_size * (j as u32));
                         }
 
@@ -3827,10 +3819,8 @@ where
 /// ```
 /// use ramp::RandomInt;
 ///
-/// fn main() {
-///     let mut rng = rand::thread_rng();
-///     let big_i = rng.gen_int(256);
-/// }
+/// let mut rng = rand::thread_rng();
+/// let big_i = rng.gen_int(256);
 /// ```
 pub trait RandomInt {
     /// Generate a random unsigned `Int` of given bit size.
@@ -3876,7 +3866,7 @@ impl<R: Rng> RandomInt for R {
     fn gen_int(&mut self, bits: usize) -> Int {
         let i = self.gen_uint(bits);
 
-       if i == Int::zero() {
+        if i == Int::zero() {
             // ...except that if the BigUint is zero, we need to try
             // again with probability 0.5. This is because otherwise,
             // the probability of generating a zero BigInt would be
@@ -4450,7 +4440,7 @@ mod tests {
                 for (m_i, m) in moduli.iter().enumerate() {
                     let b: Int = b.parse().unwrap();
                     let m: Int = m.parse().unwrap();
-                    let a = b.pow_mod(&big_expt, &m);
+                    let a = b.pow_mod(big_expt, &m);
 
                     let expected: Int = big_results[b_i * moduli.len() + m_i].parse().unwrap();
                     assert_mp_eq!(a, expected);
@@ -5054,7 +5044,7 @@ mod tests {
             Some(Int::from(897467216))
         );
         assert_eq!(
-            Int::backward_checked(a.clone(), 897467216),
+            Int::backward_checked(a, 897467216),
             Some(Int::from(-232184))
         );
     }
@@ -5257,9 +5247,9 @@ mod tests {
 
     #[test]
     fn gen_uint_below_all_ones() {
-        static N: &'static str = "000001FFFFFFFFFFFFFFFFFFFFFFFFFFF\
-                                  FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF\
-                                  FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF";
+        static N: &str = "000001FFFFFFFFFFFFFFFFFFFFFFFFFFF\
+                          FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF\
+                          FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF";
 
         let mut rng = rand::thread_rng();
 
@@ -5586,10 +5576,10 @@ mod tests {
             let mut i = Int::from(1);
 
             for j in 2..100 {
-                i = i * j;
+                i *= j;
             }
 
-            i = i * 100;
+            i *= 100;
             test::black_box(i);
         });
     }
@@ -5600,10 +5590,10 @@ mod tests {
             let mut i = Int::from(1);
 
             for j in 2..1000 {
-                i = i * j;
+                i *= j;
             }
 
-            i = i * 1000;
+            i *= 1000;
 
             test::black_box(i);
         });

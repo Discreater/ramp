@@ -240,7 +240,7 @@ impl PartialEq<Int> for Rational {
 
         // Denominator is 1
         if self.d == 1 || self.d == -1 {
-            return self.n.abs_eq(&other);
+            return self.n.abs_eq(other);
         }
 
         let other = other * &self.d;
@@ -260,33 +260,32 @@ impl Eq for Rational {}
 
 impl Ord for Rational {
     fn cmp(&self, other: &Rational) -> Ordering {
-        if self.sign() < other.sign() {
-            Ordering::Less
-        } else if self.sign() > other.sign() {
-            Ordering::Greater
-        } else {
-            // Same sign
-            // Check for zero
-            if self.sign() == 0 {
-                return Ordering::Equal;
-            }
+        match self.sign().cmp(&other.sign()) {
+            Ordering::Equal => {
+                // Same sign
+                // Check for zero
+                if self.sign() == 0 {
+                    return Ordering::Equal;
+                }
 
-            // Denominators are equal
-            if self.d == other.d {
-                return self.n.cmp(&other.n);
-            }
+                // Denominators are equal
+                if self.d == other.d {
+                    return self.n.cmp(&other.n);
+                }
 
-            let gcd = self.d.gcd(&other.d);
+                let gcd = self.d.gcd(&other.d);
 
-            let self_n = (&self.n * &other.d) / &gcd;
-            let other_n = (&other.n * &self.d) / gcd;
+                let self_n = (&self.n * &other.d) / &gcd;
+                let other_n = (&other.n * &self.d) / gcd;
 
-            let ord = self_n.abs_cmp(&other_n);
-            if self.sign() == 1 {
-                ord
-            } else {
-                ord.reverse()
-            }
+                let ord = self_n.abs_cmp(&other_n);
+                if self.sign() == 1 {
+                    ord
+                } else {
+                    ord.reverse()
+                }
+            },
+            ord => ord
         }
     }
 }
@@ -304,29 +303,28 @@ impl PartialOrd<Int> for Rational {
             return Some(Ordering::Equal);
         }
 
-        if self.sign() < other.sign() {
-            Some(Ordering::Less)
-        } else if self.sign() > other.sign() {
-            Some(Ordering::Greater)
-        } else {
-            // Denominator is 1
-            if self.d == 1 || self.d == -1 {
-                let ord = self.n.abs_cmp(other);
-                return if self.sign() == 1 {
+        match self.sign().cmp(&other.sign()) {
+            Ordering::Equal => {
+                // Denominator is 1
+                if self.d == 1 || self.d == -1 {
+                    let ord = self.n.abs_cmp(other);
+                    return if self.sign() == 1 {
+                        Some(ord)
+                    } else {
+                        Some(ord.reverse())
+                    };
+                }
+
+                let other = other * &self.d;
+
+                let ord = self.n.abs_cmp(&other);
+                if self.sign() == 1 {
                     Some(ord)
                 } else {
                     Some(ord.reverse())
-                };
-            }
-
-            let other = other * &self.d;
-
-            let ord = self.n.abs_cmp(&other);
-            if self.sign() == 1 {
-                Some(ord)
-            } else {
-                Some(ord.reverse())
-            }
+                }
+            },
+            ord => Some(ord),
         }
     }
 }
@@ -1017,7 +1015,7 @@ mod tests {
             ("1/1", "-1/2", "1/2")
         };
 
-        for &(ref l, ref r, ref a) in cases.iter() {
+        for (l, r, a) in cases.iter() {
             assert_mp_eq!(l + r, *a);
         }
     }
@@ -1033,7 +1031,7 @@ mod tests {
             ("1/3", "1/4", "1/12")
         };
 
-        for &(ref l, ref r, ref a) in cases.iter() {
+        for (l, r, a) in cases.iter() {
             assert_mp_eq!(l - r, *a);
         }
     }
@@ -1048,11 +1046,11 @@ mod tests {
             ("-1/-1", "1/-1")
         };
 
-        for &(ref l, ref r) in cases.iter() {
+        for (l, r) in cases.iter() {
             assert_eq!(&(-l), r);
         }
 
-        for &(ref l, ref r) in cases.iter() {
+        for (l, r) in cases.iter() {
             assert_eq!(-l.clone(), r.clone());
         }
     }
@@ -1068,7 +1066,7 @@ mod tests {
             ("3/8", "2/5", "3/20")
         };
 
-        for &(ref l, ref r, ref a) in cases.iter() {
+        for (l, r, a) in cases.iter() {
             assert_mp_eq!(l * r, *a);
         }
     }
@@ -1083,7 +1081,7 @@ mod tests {
             ("3/8", "2/5", "15/16")
         };
 
-        for &(ref l, ref r, ref a) in cases.iter() {
+        for (l, r, a) in cases.iter() {
             assert_mp_eq!(l / r, *a);
         }
     }
@@ -1122,7 +1120,7 @@ mod tests {
             ("1337/-1337", "-1337/-1337")
         };
 
-        for &(ref r, ref l) in cases.iter() {
+        for (r, l) in cases.iter() {
             assert_eq!(&r.clone().abs(), l);
         }
     }
@@ -1149,7 +1147,7 @@ mod tests {
             ("100/28", 4)
         };
 
-        for &(ref q, ref i) in cases.iter() {
+        for (q, i) in cases.iter() {
             assert_eq!(&q.clone().round(), i);
         }
     }

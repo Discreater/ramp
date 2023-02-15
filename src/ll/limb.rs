@@ -41,7 +41,7 @@ pub type BaseInt = u64;
  *
  * A "Limb" is a single digit in base 2^word size.
  */
-#[derive(Copy, Eq, Ord, Hash)]
+#[derive(Copy, Eq)]
 pub struct Limb(pub BaseInt);
 
 impl Clone for Limb {
@@ -119,12 +119,10 @@ impl Limb {
         div(!self, Limb(!0), self).0
     }
 
-    /**
-     * Returns whether or not the highest bit in the limb is set.
-     *
-     * Division algorithms often require the highest limb of the divisor
-     * to be `d >= BASE/2`.
-     */
+    /// Returns whether or not the highest bit in the limb is set.
+    ///
+    /// Division algorithms often require the highest limb of the divisor
+    /// to be `d >= BASE/2`.
     #[inline(always)]
     pub fn high_bit_set(self) -> bool {
         (self & Limb(1 << (Limb::BITS - 1))) != 0
@@ -372,10 +370,21 @@ impl PartialEq<Limb> for Limb {
     fn eq(&self, other: &Limb) -> bool {
         self.0 == other.0
     }
+}
 
-    #[inline(always)]
-    fn ne(&self, other: &Limb) -> bool {
-        self.0 != other.0
+/// We need to inline the implement of PartialEq, so we just explicitly use 
+/// the default implementation of Ord.
+impl Ord for Limb {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.0.cmp(&other.0)
+    }
+}
+
+/// We need to inline the implement of PartialEq, so we just explicitly use 
+/// the default implementation of Hash.
+impl std::hash::Hash for Limb {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.0.hash(state);
     }
 }
 
@@ -410,11 +419,6 @@ impl PartialEq<BaseInt> for Limb {
     #[inline(always)]
     fn eq(&self, other: &BaseInt) -> bool {
         self.0 == *other
-    }
-
-    #[inline(always)]
-    fn ne(&self, other: &BaseInt) -> bool {
-        self.0 != *other
     }
 }
 
@@ -540,7 +544,7 @@ pub fn mul(u: Limb, v: Limb) -> (Limb, Limb) {
 
         }
     }
-    return mul_impl(u, v);
+    mul_impl(u, v)
 }
 
 /**
@@ -589,7 +593,7 @@ pub fn add_2(ah: Limb, al: Limb, bh: Limb, bl: Limb) -> (Limb, Limb) {
             (high, low)
         }
     }
-    return add_2_impl(ah, al, bh, bl);
+    add_2_impl(ah, al, bh, bl)
 }
 
 /**
@@ -638,7 +642,7 @@ pub fn sub_2(ah: Limb, al: Limb, bh: Limb, bl: Limb) -> (Limb, Limb) {
             (high, low)
         }
     }
-    return sub_2_impl(ah, al, bh, bl);
+    sub_2_impl(ah, al, bh, bl)
 }
 
 /**
@@ -757,7 +761,7 @@ pub fn div(nh: Limb, nl: Limb, d: Limb) -> (Limb, Limb) {
         assume(d.high_bit_set());
     }
 
-    return div_impl(nh, nl, d);
+    div_impl(nh, nl, d)
 }
 
 /**

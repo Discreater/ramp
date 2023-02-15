@@ -25,6 +25,11 @@ use crate::ll::limb_ptr::{Limbs, LimbsMut};
 
 const TOOM22_THRESHOLD: i32 = 20;
 
+/// # Safety
+/// 
+/// - require `n > 0`
+/// - `wp` must not overlap with `xp`, unless `wp` address is small or equal than xp
+/// - `wp` must be at least `n` limbs long
 #[allow(dead_code)]
 unsafe fn mul_1_generic(mut wp: LimbsMut, mut xp: Limbs, mut n: i32, vl: Limb) -> Limb {
     let mut cl = Limb(0);
@@ -45,15 +50,19 @@ unsafe fn mul_1_generic(mut wp: LimbsMut, mut xp: Limbs, mut n: i32, vl: Limb) -
         xp = xp.offset(1);
     }
 
-    return cl;
+    cl
 }
 
-/**
- * Multiplies the `n` least-significant limbs of `xp` by `vl` storing the `n` least-significant
- * limbs of the product in `{wp, n}`.
- *
- * Returns the highest limb of the product
- */
+/// Multiplies the `n` least-significant limbs of `xp` by `vl` storing the `n` least-significant
+/// limbs of the product in `{wp, n}`.
+///
+/// Returns the highest limb of the product
+/// 
+/// # Safety
+/// 
+/// - require `n > 0`
+/// - `wp` must not overlap with `xp`, unless `wp` address is small or equal than xp
+/// - `wp` must be at least `n` limbs long
 #[cfg(not(asm))]
 #[inline]
 pub unsafe fn mul_1(wp: LimbsMut, xp: Limbs, n: i32, vl: Limb) -> Limb {
@@ -81,6 +90,11 @@ pub unsafe fn mul_1(mut wp: LimbsMut, xp: Limbs, n: i32, vl: Limb) -> Limb {
     ramp_mul_1(&mut *wp, &*xp, n, vl)
 }
 
+/// # Safety
+///
+/// - require `n > 0`
+/// - `wp` must not overlap with `xp`
+/// - `wp` must be at least `n` limbs long
 #[allow(dead_code)]
 unsafe fn addmul_1_generic(mut wp: LimbsMut, mut xp: Limbs, mut n: i32, vl: Limb) -> Limb {
     debug_assert!(n > 0);
@@ -107,23 +121,31 @@ unsafe fn addmul_1_generic(mut wp: LimbsMut, mut xp: Limbs, mut n: i32, vl: Limb
         xp = xp.offset(1);
     }
 
-    return cl;
+    cl
 }
 
-/**
- * Multiplies the `n` least-signficiant digits of `xp` by `vl` and adds them to the `n`
- * least-significant digits of `wp`. Returns the highest limb of the result.
- */
+/// Multiplies the `n` least-significant digits of `xp` by `vl` and adds them to the `n`
+/// least-significant digits of `wp`. Returns the highest limb of the result.
+///
+/// # Safety
+///
+/// - require `n > 0`
+/// - `wp` must not overlap with `xp`
+/// - `wp` must be at least `n` limbs long
 #[cfg(not(asm))]
 #[inline]
 pub unsafe fn addmul_1(wp: LimbsMut, xp: Limbs, n: i32, vl: Limb) -> Limb {
     addmul_1_generic(wp, xp, n, vl)
 }
 
-/**
- * Multiplies the `n` least-signficiant digits of `xp` by `vl` and adds them to the `n`
- * least-significant digits of `wp`. Returns the highest limb of the result.
- */
+/// Multiplies the `n` least-significant digits of `xp` by `vl` and adds them to the `n`
+/// least-significant digits of `wp`. Returns the highest limb of the result.
+///
+/// # Safety
+///
+/// - require `n > 0`
+/// - `wp` must not overlap with `xp`
+/// - `wp` must be at least `n` limbs long
 #[cfg(asm)]
 #[inline]
 pub unsafe fn addmul_1(mut wp: LimbsMut, xp: Limbs, n: i32, vl: Limb) -> Limb {
@@ -134,6 +156,11 @@ pub unsafe fn addmul_1(mut wp: LimbsMut, xp: Limbs, n: i32, vl: Limb) -> Limb {
     ramp_addmul_1(&mut *wp, &*xp, n, vl)
 }
 
+/// # Safety
+///
+/// - require `n > 0`
+/// - `wp` must not overlap with `xp`
+/// - `wp` must be at least `n` limbs long
 #[allow(dead_code)]
 unsafe fn submul_1_generic(mut wp: LimbsMut, mut xp: Limbs, mut n: i32, vl: Limb) -> Limb {
     debug_assert!(n > 0);
@@ -160,23 +187,31 @@ unsafe fn submul_1_generic(mut wp: LimbsMut, mut xp: Limbs, mut n: i32, vl: Limb
         xp = xp.offset(1);
     }
 
-    return cl;
+    cl
 }
 
-/**
- * Multiplies the `n` least-signficiant digits of `xp` by `vl` and subtracts them from the `n`
- * least-significant digits of `wp`. Returns the highest limb of the result, adjust for borrow.
- */
+/// Multiplies the `n` least-significant digits of `xp` by `vl` and subtracts them from the `n`
+/// least-significant digits of `wp`. Returns the highest limb of the result, adjust for borrow.
+///
+/// # Safety
+///
+/// - require `n > 0`
+/// - `wp` must not overlap with `xp`
+/// - `wp` must be at least `n` limbs long
 #[cfg(not(asm))]
 #[inline]
 pub unsafe fn submul_1(wp: LimbsMut, xp: Limbs, n: i32, vl: Limb) -> Limb {
     submul_1_generic(wp, xp, n, vl)
 }
 
-/**
- * Multiplies the `n` least-signficiant digits of `xp` by `vl` and subtracts them from the `n`
- * least-significant digits of `wp`. Returns the highest limb of the result, adjust for borrow.
- */
+/// Multiplies the `n` least-significant digits of `xp` by `vl` and subtracts them from the `n`
+/// least-significant digits of `wp`. Returns the highest limb of the result, adjust for borrow.
+///
+/// # Safety
+///
+/// - require `n > 0`
+/// - `wp` must not overlap with `xp`
+/// - `wp` must be at least `n` limbs long
 #[cfg(asm)]
 #[inline]
 pub unsafe fn submul_1(mut wp: LimbsMut, xp: Limbs, n: i32, vl: Limb) -> Limb {
@@ -187,11 +222,12 @@ pub unsafe fn submul_1(mut wp: LimbsMut, xp: Limbs, n: i32, vl: Limb) -> Limb {
     ramp_submul_1(&mut *wp, &*xp, n, vl)
 }
 
-/**
- * Multiplies `{xp, xs}` by `{yp, ys}`, storing the result to `{wp, xs + ys}`.
- *
- * `{wp, xs + ys}` must be disjoint from both inputs.
- */
+/// Multiplies `{xp, xs}` by `{yp, ys}`, storing the result to `{wp, xs + ys}`.
+///
+/// # Safety
+///
+/// - `{wp, xs + ys}` must be disjoint from both inputs.
+/// - require `xs >= ys > 0`
 pub unsafe fn mul(wp: LimbsMut, xp: Limbs, xs: i32, yp: Limbs, ys: i32) {
     debug_assert!(xs >= ys);
     debug_assert!(ys > 0);
@@ -479,13 +515,14 @@ unsafe fn mul_unbalanced(
     ll::incr(wp.offset(ys as isize), cy);
 }
 
-/**
- * Squares the number in `{xp, xs}` storing the result in `{wp, xs*2}`.
- * This is slightly more efficient than regular multiplication with both
- * inputs the same.
- *
- * `{wp, xs*2}` must not overlap with `{xp, xs}`
- */
+/// Squares the number in `{xp, xs}` storing the result in `{wp, xs*2}`.
+/// This is slightly more efficient than regular multiplication with both
+/// inputs the same.
+///
+/// # Safety
+///
+/// - `{wp, xs*2}` must not overlap with `{xp, xs}`.
+/// - require `xs > 0`.
 pub unsafe fn sqr(wp: LimbsMut, xp: Limbs, xs: i32) {
     debug_assert!(xs > 0);
     debug_assert!(!overlap(wp, 2 * xs, xp, xs));

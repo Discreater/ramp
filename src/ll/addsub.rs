@@ -18,6 +18,10 @@ use crate::ll::limb::Limb;
 use crate::ll::limb_ptr::{Limbs, LimbsMut};
 use super::{copy_rest, same_or_separate};
 
+/// # Safety
+/// 
+/// `n` must greater than or equal to 1.
+/// `wp` must not overlapping with `xp` or `yp` in n limbs
 #[allow(dead_code)]
 unsafe fn add_n_generic(mut wp: LimbsMut, mut xp: Limbs, mut yp: Limbs,
                         mut n: i32) -> Limb {
@@ -65,10 +69,13 @@ pub unsafe fn add_n(mut wp: LimbsMut, xp: Limbs, yp: Limbs,
     return ramp_add_n(&mut *wp, &*xp, &*yp, n);
 }
 
-/**
- * Adds the `n` least signficant limbs of `xp` and `yp`, storing the result in {wp, n}.
- * If there was a carry, it is returned.
- */
+/// Adds the `n` least significant limbs of `xp` and `yp`, storing the result in {wp, n}.
+/// If there was a carry, it is returned.
+///
+/// # Safety
+/// 
+/// `n` must greater than or equal to 1.
+/// `wp` must not overlapping with `xp` or `yp` in n limbs
 #[cfg(any(feature="fallbacks",not(asm)))]
 #[inline]
 pub unsafe fn add_n(wp: LimbsMut, xp: Limbs, yp: Limbs,
@@ -80,6 +87,10 @@ pub unsafe fn add_n(wp: LimbsMut, xp: Limbs, yp: Limbs,
     add_n_generic(wp, xp, yp, n)
 }
 
+/// # Safety
+/// 
+/// `n` must greater than or equal to 1.
+/// `wp` must not overlapping with `xp` or `yp` in n limbs, unless `wp` equal to one of `xp` or `yp`.
 #[allow(dead_code)]
 unsafe fn sub_n_generic(mut wp: LimbsMut, mut xp: Limbs, mut yp: Limbs,
                         mut n: i32) -> Limb {
@@ -127,10 +138,13 @@ pub unsafe fn sub_n(mut wp: LimbsMut, xp: Limbs, yp: Limbs,
     ramp_sub_n(&mut *wp, &*xp, &*yp, n)
 }
 
-/**
- * Subtracts the `n` least signficant limbs of `yp` from `xp`, storing the result in {wp, n}.
- * If there was a borrow from a higher-limb (i.e., the result would be negative), it is returned.
- */
+/// Subtracts the `n` least significant limbs of `yp` from `xp`, storing the result in {wp, n}.
+/// If there was a borrow from a higher-limb (i.e., the result would be negative), it is returned.
+/// 
+/// # Safety
+/// 
+/// `n` must greater than or equal to 1.
+/// `wp` must not overlapping with `xp` or `yp` in n limbs, unless `wp` equal to one of `xp` or `yp`.
 #[cfg(not(asm))]
 #[inline]
 pub unsafe fn sub_n(wp: LimbsMut, xp: Limbs, yp: Limbs,
@@ -140,6 +154,9 @@ pub unsafe fn sub_n(wp: LimbsMut, xp: Limbs, yp: Limbs,
 
 macro_rules! aors {
     ($op:ident, $lop:ident, $f:ident) => {
+        /// # Safety
+        /// 
+        /// - require xs >= ys >= 0.
         #[inline]
         pub unsafe fn $op(wp: LimbsMut,
                           xp: Limbs, xs: i32,
@@ -177,6 +194,9 @@ aors!(sub, sub_overflow, sub_n);
 
 macro_rules! aors_1 {
     ($op:ident, $f:ident) => {
+        /// # Safety
+        /// 
+        /// must not overflow
         #[inline]
         pub unsafe fn $op(mut wp: LimbsMut,
                           xp: Limbs, xs: i32,
@@ -203,6 +223,9 @@ macro_rules! aors_1 {
 aors_1!(add_1, add_overflow);
 aors_1!(sub_1, sub_overflow);
 
+/// # Safety 
+/// 
+/// - `ptr` + `incr` must not overflow.
 #[inline(always)]
 pub unsafe fn incr(mut ptr: LimbsMut, incr: Limb) {
     let (x, mut carry) = (*ptr).add_overflow(incr);
@@ -216,6 +239,9 @@ pub unsafe fn incr(mut ptr: LimbsMut, incr: Limb) {
     }
 }
 
+/// # Safety
+/// 
+/// - Require `ptr` >= `decr`.
 #[inline(always)]
 pub unsafe fn decr(mut ptr: LimbsMut, decr: Limb) {
     let x = *ptr;

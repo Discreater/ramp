@@ -33,8 +33,8 @@ fn factorial(n: usize) -> Int {
     }
 
     for i in 2..n {
-        a = a * i;
+        a *= i;
     }
 
-    return a * n;
+    a * n
 }

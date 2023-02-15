@@ -21,12 +21,14 @@ use crate::ll::limb::{self, Limb};
 use crate::ll::limb_ptr::{Limbs, LimbsMut};
 use crate::mem;
 
-/**
- * Divides the `xs` least-significant limbs at `xp` by `d`, storing the result in {qp, qxn + xs}.
- *
- * Specifically, the integer part is stored in {qp+qxn, xs} and the fractional part (if any) is
- * stored in {qp, qxn}. The remainder is returned.
- */
+/// Divides the `xs` least-significant limbs at `xp` by `d`, storing the result in {qp, qxn + xs}.
+///
+/// Specifically, the integer part is stored in {qp+qxn, xs} and the fractional part (if any) is
+/// stored in {qp, qxn}. The remainder is returned.
+/// 
+/// # Safety
+/// 
+/// See debug_asserts.
 pub unsafe fn divrem_1(mut qp: LimbsMut, qxn: i32, xp: Limbs, mut xs: i32, d: Limb) -> Limb {
     debug_assert!(qxn >= 0);
     debug_assert!(xs >= 0);
@@ -83,7 +85,7 @@ pub unsafe fn divrem_1(mut qp: LimbsMut, qxn: i32, xp: Limbs, mut xs: i32, d: Li
             i -= 1;
         }
 
-        return r;
+        r
     } else {
         if xs != 0 {
             let n1 = *xp.offset((xs - 1) as isize);
@@ -143,10 +145,15 @@ pub unsafe fn divrem_1(mut qp: LimbsMut, qxn: i32, xp: Limbs, mut xs: i32, d: Li
             i -= 1;
         }
 
-        return r >> cnt;
+        r >> cnt
     }
 }
 
+/// # Safety
+/// 
+/// - require ns >= 2.
+/// - require qxn >= 0.
+/// - other require see debug_asserts.
 pub unsafe fn divrem_2(mut qp: LimbsMut, qxn: i32, mut np: LimbsMut, ns: i32, dp: Limbs) -> Limb {
     debug_assert!(ns >= 2);
     debug_assert!(qxn >= 0);
@@ -201,7 +208,7 @@ pub unsafe fn divrem_2(mut qp: LimbsMut, qxn: i32, mut np: LimbsMut, ns: i32, dp
     *np.offset(1) = r1;
     *np = r0;
 
-    return Limb(most_significant_q_limb);
+    Limb(most_significant_q_limb)
 }
 
 #[inline]
@@ -252,10 +259,13 @@ fn divrem_3by2(n2: Limb, n1: Limb, n0: Limb, d1: Limb, d0: Limb, dinv: Limb) -> 
     }
 }
 
-/**
- * Divides {np, ns} by {dp, ds}. If ns <= ds, the quotient is stored in {qp, 1}, otherwise
- * the quotient is stored to {qp, (ns - ds) + 1}. The remainder is always stored to {rp, ds}.
- */
+/// Divides {np, ns} by {dp, ds}. If ns <= ds, the quotient is stored in {qp, 1}, otherwise
+/// the quotient is stored to {qp, (ns - ds) + 1}. The remainder is always stored to {rp, ds}.
+/// 
+/// # Safety
+/// 
+/// - require `ns` and `ds` to be non-negative
+/// - require `qp` not overlap with `np`.
 pub unsafe fn divrem(mut qp: LimbsMut, mut rp: LimbsMut, np: Limbs, ns: i32, dp: Limbs, ds: i32) {
     // Space for at least one limb is always needed, even if
     // (logarithmically) the result will be so small that negative
@@ -263,16 +273,20 @@ pub unsafe fn divrem(mut qp: LimbsMut, mut rp: LimbsMut, np: Limbs, ns: i32, dp:
     let max_result_size = cmp::max((ns - ds) + 1, 1);
     debug_assert!(!overlap(qp, max_result_size, np, ns));
 
-    if ns < ds {
-        *qp = Limb(0);
-        ll::copy_incr(np, rp, ns);
-        return;
-    } else if ns == ds {
-        if let Ordering::Less = ll::cmp(np, dp, ns) {
+    match ns.cmp(&ds) {
+        Ordering::Less => {
             *qp = Limb(0);
             ll::copy_incr(np, rp, ns);
             return;
         }
+        Ordering::Equal => {
+            if let Ordering::Less = ll::cmp(np, dp, ns) {
+                *qp = Limb(0);
+                ll::copy_incr(np, rp, ns);
+                return;
+            }
+        }
+        _ => {}
     }
 
     match ds {
@@ -313,7 +327,6 @@ pub unsafe fn divrem(mut qp: LimbsMut, mut rp: LimbsMut, np: Limbs, ns: i32, dp:
                 *rp = (*np_tmp >> cnt) | (*np_tmp.offset(1) << (Limb::BITS - cnt));
                 *rp.offset(1) = *np_tmp.offset(1) >> cnt;
             }
-            return;
         }
         _ => {
             let mut tmp = mem::TmpAllocator::new();
@@ -401,7 +414,7 @@ unsafe fn sb_div(qp: LimbsMut, np: LimbsMut, ns: i32, dp: Limbs, ds: i32, dinv: 
     let ds = (ds - 2) as isize;
 
     let d1 = *dp.offset(ds + 1);
-    let d0 = *dp.offset(ds + 0);
+    let d0 = *dp.offset(ds);
 
     np = np.offset(-2);
 
@@ -454,5 +467,5 @@ unsafe fn sb_div(qp: LimbsMut, np: LimbsMut, ns: i32, dp: Limbs, ds: i32, dinv: 
 
     *np.offset(1) = n2;
 
-    return qh;
+    qh
 }

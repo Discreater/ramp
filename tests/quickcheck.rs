@@ -96,7 +96,7 @@ impl Arbitrary for BigIntStr {
         let mut string = String::with_capacity(neg as usize + size);
 
         if neg {
-            string.push_str("-")
+            string.push('-')
         }
         // shouldn't start with zero
         let mut first = 0;
@@ -154,7 +154,7 @@ impl Arbitrary for BigIntStr {
                 }
                 string.clone()
             })
-            .take_while(|s| s.0 != "" && s.0 != "-");
+            .take_while(|s| !s.0.is_empty() && s.0 != "-");
         Box::new(iter)
     }
 }
@@ -272,7 +272,7 @@ quickcheck! {
     fn is_even(a: BigIntStr) -> TestResult {
         let (ar, ag) = a.parse_u();
 
-        TestResult::from_bool(ar.is_even() == !tstbit(&ag,0))
+        TestResult::from_bool(ar.is_even() != tstbit(&ag,0))
     }
 
     fn trailing_zeros(a: BigIntStr) -> TestResult {
@@ -840,7 +840,7 @@ quickcheck! {
     fn to_str_radix(a: BigIntStr, b: u8) -> TestResult {
         // fold, to avoid discarding too many times, but without a bias
         let b = b % 64;
-        if b < 2 || b > 36 { return TestResult::discard() }
+        if !(2..=36).contains(&b) { return TestResult::discard() }
         let (ar, ag) = a.parse();
 
         TestResult::from_bool(ar.to_str_radix(b, false) == ag.to_str_radix(b.into()))
@@ -860,7 +860,7 @@ quickcheck! {
     fn write_radix(a: BigIntStr, b: u8) -> TestResult {
         // fold, to avoid discarding too many times, but without a bias
         let b = b % 64;
-        if b < 2 || b > 36 { return TestResult::discard() }
+        if !(2..=36).contains(&b) { return TestResult::discard() }
         let (ar, ag) = a.parse();
 
         let mut v = Vec::new();
@@ -871,7 +871,7 @@ quickcheck! {
     fn from_str_radix(a: BigIntStr, b: u8) -> TestResult {
         // fold, to avoid discarding too many times, but without a bias
         let b = b % 64;
-        if b < 2 || b > 36 { return TestResult::discard() }
+        if !(2..=36).contains(&b) { return TestResult::discard() }
 
         let (ar, ag) = a.parse();
 

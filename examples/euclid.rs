@@ -53,12 +53,12 @@ fn inverse(a: Int, n: &Int) -> Option<Int> {
 /// Calculate base^exp (mod modulus).
 fn mpow(mut base: Int, mut exp: u32, modulus: &Int) -> Int {
     let mut result = Int::one();
-    base = base % modulus;
+    base %= modulus;
     while exp > 0 {
         if exp % 2 == 1 {
             result = (result * &base) % modulus;
         }
-        exp = exp >> 1;
+        exp >>= 1;
         base = (base.dsquare()) % modulus;
     }
     result

@@ -14,7 +14,7 @@ use num_bigint::BigUint;
 fn main() {
     let out_dir = env::var("OUT_DIR").unwrap();
     let dest_path = Path::new(&out_dir).join("bases_table.rs");
-    let mut f = File::create(&dest_path).unwrap();
+    let mut f = File::create(dest_path).unwrap();
 
     gen_bases(&mut f);
 

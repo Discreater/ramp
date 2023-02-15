@@ -44,12 +44,17 @@ fn div_unnorm(n: Limb, d: Limb) -> (Limb, Limb) {
     (n / d, n % d)
 }
 
-#[inline]
 /// Returns the number of digits needed to represent `p` in base `base`
 /// without sign. If the base is not a power of two, the result is only
 /// an estimate. It can equal the the actually needed digits or overestimate
 /// by 1.
 /// Returns 1 if the number is 0;
+/// 
+/// # Safety
+/// 
+/// - require `base >= 2`.
+/// - require `n` to be non-negative.
+#[inline]
 pub unsafe fn num_base_digits(p: Limbs, n: i32, base: u32) -> usize {
     debug_assert!(base >= 2);
     assume(base >= 2);
@@ -94,13 +99,16 @@ pub fn base_digits_to_len(num: usize, base: u32) -> usize {
     (num / digits_per_limb) + 1
 }
 
-/**
- * Converts `nn` limbs at `np` to the given base, storing the output in `out`. `out` is assumed to
- * have enough space for the entire digit. The output is stored from most-significant digit to least.
- *
- * The values in `out` are the raw values of the base. Conversion for output should be done as a second
- * step.
- */
+/// Converts `nn` limbs at `np` to the given base, storing the output in `out`.
+/// The output is stored from most-significant digit to least.
+///
+/// # Safety
+/// 
+/// - `out` is assumed to have enough space for the entire digit. 
+/// - The values in `out` are the raw values of the base. Conversion for output should be done as a second
+/// step.
+/// - require `base >= 2` and `base < BASES.len() as u32`
+/// - `nn` must be non-negative
 pub unsafe fn to_base<F: FnMut(u8)>(base: u32, np: Limbs, nn: i32, mut out_byte: F) {
     debug_assert!(nn >= 0);
     debug_assert!(base < BASES.len() as u32);
@@ -171,7 +179,7 @@ unsafe fn to_base_impl<F: FnMut(u8)>(mut len: u32, base: u32, np: Limbs, mut nn:
     let mut sz = 0;
 
     let s : *mut u8 = &mut buf[0];
-    let mut s = s.offset(buf_len as isize);
+    let mut s = s.add(buf_len);
 
     let base = Limb(base as ll::limb::BaseInt);
 
@@ -254,10 +262,14 @@ unsafe fn to_base_impl<F: FnMut(u8)>(mut len: u32, base: u32, np: Limbs, mut nn:
     }
 }
 
-/**
- * Converts the base `base` bytestring {bp, bs}, storing the limbs in `out`. `out` is assumed to
- * have enough space to store the result.
- */
+/// Converts the base `base` bytestring {bp, bs}, storing the limbs in `out`.
+/// 
+/// # Safety
+/// 
+/// - `out` is assumed to have enough space to store the result.
+/// - require `bs` > 0.
+/// - require `base` < BASES.len() as u32.
+/// - require `base` >= 2.
 pub unsafe fn from_base(mut out: LimbsMut, bp: *const u8, bs: i32, base: u32) -> usize {
     debug_assert!(bs > 0);
     debug_assert!(base < BASES.len() as u32);
@@ -388,5 +400,5 @@ unsafe fn from_base_small(mut out: LimbsMut, mut bp: *const u8, bs: i32, base: u
         }
     }
 
-    return size;
+    size
 }

@@ -43,7 +43,7 @@ impl Context {
         self.tmp1 += &self.acc;
         self.tmp1 /= &self.den;
 
-        return self.tmp1.to_single_limb();
+        self.tmp1.to_single_limb()
     }
     fn eliminate_digit(&mut self, d: Limb) {
         self.acc -= self.den.clone() * d;

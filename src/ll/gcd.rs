@@ -17,6 +17,11 @@ use std::cmp::Ordering;
 use crate::ll;
 use crate::ll::limb_ptr::LimbsMut;
 
+
+/// # Safety
+/// 
+/// - require an >= bn > 0
+/// - `gp`, `ap` and `bp` will be modified
 pub unsafe fn gcd(mut gp: LimbsMut, mut ap: LimbsMut, mut an: i32, mut bp: LimbsMut, mut bn: i32) -> i32 {
     assert!(an >= bn);
 
@@ -69,12 +74,9 @@ pub unsafe fn gcd(mut gp: LimbsMut, mut ap: LimbsMut, mut an: i32, mut bp: Limbs
         an = ll::normalize(ap.as_const(), an);
         bn = ll::normalize(bp.as_const(), bn);
 
-        let c = if an == bn {
-            ll::cmp(ap.as_const(), bp.as_const(), an)
-        } else if an > bn {
-            Ordering::Greater
-        } else {
-            Ordering::Less
+        let c = match an.cmp(&bn) {
+            Ordering::Equal => ll::cmp(ap.as_const(), bp.as_const(), an),
+            ord => ord
         };
 
         if c == Ordering::Greater || c == Ordering::Equal  {

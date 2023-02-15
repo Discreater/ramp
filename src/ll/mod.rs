@@ -102,29 +102,55 @@ pub use self::div::{divrem, divrem_1, divrem_2};
 pub use self::gcd::gcd;
 pub use self::mul::{addmul_1, mul, mul_1, sqr, submul_1};
 
+/// Check if xp and yp are overlap.
+///
+/// # Safety
+///
+/// require `xs > 0`.
+/// require `ys > 0`.
 #[inline(always)]
 pub unsafe fn overlap(xp: LimbsMut, xs: i32, yp: Limbs, ys: i32) -> bool {
     xp.offset(xs as isize).as_const() > yp && yp.offset(ys as isize) > xp.as_const()
 }
 
+/// Check if xp is equal to yp, or if xp and yp are not overlap.
+///
+/// # Safety
+///
+/// require `xs` > 0.
+/// require `ys` > 0.
 #[inline(always)]
 pub unsafe fn same_or_separate(xp: LimbsMut, xs: i32, yp: Limbs, ys: i32) -> bool {
     xp.as_const() == yp || !overlap(xp, xs, yp, ys)
 }
-
+/// Check if xp is small or equal to yp, or if xp and yp are not overlap.
+///
+/// # Safety
+///
+/// require `xs` > 0.
+/// require `ys` > 0.
 #[inline(always)]
 pub unsafe fn same_or_incr(xp: LimbsMut, xs: i32, yp: Limbs, ys: i32) -> bool {
     xp.as_const() <= yp || !overlap(xp, xs, yp, ys)
 }
 
+/// Check if xp is large or equal to yp, or if xp and yp are not overlap.
+///
+/// # Safety
+///
+/// require `xs` > 0.
+/// require `ys` > 0.
 #[inline(always)]
 pub unsafe fn same_or_decr(xp: LimbsMut, xs: i32, yp: Limbs, ys: i32) -> bool {
     xp.as_const() >= yp || !overlap(xp, xs, yp, ys)
 }
 
-/**
- * Copies the `n` limbs from `src` to `dst` in an incremental fashion.
- */
+/// Copies the `n` limbs from `src` to `dst` in an incremental fashion.
+///
+/// # Safety
+///
+/// require `n > 0`.
+/// `dst` address must small or equal to `src` address.
 #[inline]
 pub unsafe fn copy_incr(src: Limbs, dst: LimbsMut, n: i32) {
     debug_assert!(same_or_incr(dst, n, src, n));
@@ -136,9 +162,12 @@ pub unsafe fn copy_incr(src: Limbs, dst: LimbsMut, n: i32) {
     }
 }
 
-/**
- * Copies the `n` limbs from `src` to `dst` in a decremental fashion.
- */
+/// Copies the `n` limbs from `src` to `dst` in a decremental fashion.
+///
+/// # Safety
+///
+/// require `n > 0`.
+/// `dst` address must large or equal to `src` address.
 #[inline]
 pub unsafe fn copy_decr(src: Limbs, dst: LimbsMut, mut n: i32) {
     debug_assert!(same_or_decr(dst, n, src, n));
@@ -150,9 +179,11 @@ pub unsafe fn copy_decr(src: Limbs, dst: LimbsMut, mut n: i32) {
     }
 }
 
-/**
- * Copies the `n - start` limbs from `src + start` to `dst + start`
- */
+/// Copies the `n - start` limbs from `src + start` to `dst + start`.
+///
+/// # Safety
+///
+///
 #[inline]
 pub unsafe fn copy_rest(src: Limbs, dst: LimbsMut, n: i32, start: i32) {
     copy_incr(
@@ -162,26 +193,26 @@ pub unsafe fn copy_rest(src: Limbs, dst: LimbsMut, n: i32, start: i32) {
     );
 }
 
+/// Returns the size of the integer pointed to by `p` such that the most
+/// significant limb is non-zero.
+///
+/// # Safety
+///
+/// If `n` is negative or zero, always returns `n`.
 #[inline]
-/**
- * Returns the size of the integer pointed to by `p` such that the most
- * significant limb is non-zero.
- */
 pub unsafe fn normalize(p: Limbs, mut n: i32) -> i32 {
     debug_assert!(n >= 0);
     while n > 0 && *p.offset((n - 1) as isize) == 0 {
         n -= 1;
     }
 
-    return n;
+    n
 }
 
-/**
- * Called when a divide by zero occurs.
- *
- * If debug assertions are enabled, a message is printed and the
- * stack unwinds. Otherwise it will simply abort the process.
- */
+/// Called when a divide by zero occurs.
+///
+/// If debug assertions are enabled, a message is printed and the
+/// stack unwinds. Otherwise it will simply abort the process.
 #[cold]
 #[inline(never)]
 pub fn divide_by_zero() -> ! {
@@ -192,9 +223,11 @@ pub fn divide_by_zero() -> ! {
     }
 }
 
-/**
- * Checks that all `nn` limbs in `np` are zero
- */
+/// Checks that all `nn` limbs in `np` are zero
+///
+/// # Safety
+///
+/// If `n` is negative or zero, always returns true.
 pub unsafe fn is_zero(mut np: Limbs, mut nn: i32) -> bool {
     while nn > 0 {
         if *np != 0 {
@@ -203,9 +236,14 @@ pub unsafe fn is_zero(mut np: Limbs, mut nn: i32) -> bool {
         np = np.offset(1);
         nn -= 1;
     }
-    return true;
+    true
 }
 
+/// Sets the `n` least-significant limbs of `np` to zero
+///
+/// # Safety
+///
+/// If `n` is negative or zero, do nothing.
 pub unsafe fn zero(mut np: LimbsMut, mut nn: i32) {
     while nn > 0 {
         *np = Limb(0);
@@ -214,10 +252,12 @@ pub unsafe fn zero(mut np: LimbsMut, mut nn: i32) {
     }
 }
 
-/**
- * Compares the `n` least-significant limbs of `xp` and `yp`, returning whether
- * {xp, n} is less than, equal to or greater than {yp, n}
- */
+/// Compares the `n` least-significant limbs of `xp` and `yp`, returning whether
+/// {xp, n} is less than, equal to or greater than {yp, n}
+///
+/// # Safety
+///
+/// If `n` is negative, always return `Ordering::Equal`.
 pub unsafe fn cmp(xp: Limbs, yp: Limbs, n: i32) -> Ordering {
     let mut i = n - 1;
     while i >= 0 {
@@ -250,7 +290,7 @@ pub unsafe fn dump(lbl: &str, mut p: Limbs, mut n: i32) {
     stdout.write_all(b"[\n");
     let mut i = 0;
     while n > 0 {
-        write!(stdout, "0x{:0>2X}", (*p).0);
+        write!(stdout, "0x{:0>2X}", p.0);
         p = p.offset(1);
         n -= 1;
         if n != 0 {
@@ -536,9 +576,6 @@ mod test {
     fn test_mul_large() {
         // Warning, dragons lie ahead, mostly to avoid writing out 150-limb numbers
 
-        let a;
-        let b;
-        let mut c;
         // Abuse the fact that fixed-size arrays and tuples are laid out sequentially in memory
         let expected: [Limb; 73] = unsafe {
             ::std::mem::transmute((
@@ -551,11 +588,11 @@ mod test {
         };
 
         // (B^43 - 1)
-        a = [Limb(!0); 43];
+        let a = [Limb(!0); 43];
         // (B^30 - 1)
-        b = [Limb(!0); 30];
+        let b = [Limb(!0); 30];
 
-        c = [Limb(0); 73];
+        let mut c = [Limb(0); 73];
 
         unsafe {
             let ap = Limbs::new(&a[0], 0, a.len() as i32);
@@ -569,9 +606,6 @@ mod test {
         let cp: &[Limb] = &c;
         assert_eq!(cp, ep);
 
-        let a;
-        let b;
-        let mut c;
         // Abuse the fact that fixed-size arrays and tuples are laid out sequentially in memory
         let expected: [Limb; 150] = unsafe {
             ::std::mem::transmute((
@@ -584,11 +618,11 @@ mod test {
         };
 
         // (B^124 - 1)
-        a = [Limb(!0); 124];
+        let a = [Limb(!0); 124];
         // (B^25 - 1)
-        b = [Limb(!0); 26];
+        let b = [Limb(!0); 26];
 
-        c = [Limb(0); 150];
+        let mut c = [Limb(0); 150];
 
         unsafe {
             let ap = Limbs::new(&a[0], 0, a.len() as i32);

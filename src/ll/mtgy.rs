@@ -26,6 +26,12 @@ use ll::limb_ptr::{Limbs, LimbsMut};
 /// - `a`: base.
 /// - `bp`: exp
 /// - `bn`: bit size of exp
+/// 
+/// # Safety
+/// 
+/// - `wp` must not overlapping with `n`, `a`, `bp` in `r_limbs` limbs.
+/// - require `n` is odd.
+/// - require `r_limbs` is greater than or equal to 0.
 pub unsafe fn modpow(
     wp: LimbsMut,
     r_limbs: i32,
@@ -46,7 +52,7 @@ pub unsafe fn modpow(
     let mut pow_0 = tmp.allocate(r_limbs as usize);
     *pow_0 = Limb(1);
     let pow_1 = tmp.allocate(r_limbs as usize);
-    ll::copy_incr(a, pow_1, r_limbs as i32);
+    ll::copy_incr(a, pow_1, r_limbs);
     table.push(pow_0);
     table.push(pow_1);
     for _ in 2..(1 << k) {
@@ -67,7 +73,7 @@ pub unsafe fn modpow(
         table.push(next);
     }
 
-    let exp_bit_length = ll::base::num_base_digits(bp, bn, 2) as usize;
+    let exp_bit_length = ll::base::num_base_digits(bp, bn, 2);
     let block_count = (exp_bit_length + k - 1) / k;
     // recursive Wk = W(k)
     for i in (0..block_count).rev() {
@@ -101,6 +107,7 @@ pub unsafe fn modpow(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 #[inline]
 unsafe fn mul(
     wp: LimbsMut,
@@ -131,12 +138,20 @@ unsafe fn sqr(
     redc(wp, r_limbs, n, nquote0, t)
 }
 
+/// # Safety
+///
+/// - `t` will be modified.
+/// - `t` must have enough space to store `2 * r_limbs` limbs.
+/// - `wp` must have enough space to store `r_limbs` limbs.
+/// - require `r_limbs` > 0.
+/// - `t` must not overlap with `n`.
+/// - `wp` must not overlap with `n` and `t`, unless `wp` equal to one of `n` and `t.offset(r_limbs)`.
 #[inline]
 pub unsafe fn redc(wp: LimbsMut, r_limbs: i32, n: Limbs, nquote0: Limb, t: LimbsMut) {
     let mut carry = 0;
     for i in 0..r_limbs {
         carry = 0;
-        let m = (*t.offset(i as _)).0.wrapping_mul(nquote0.0 as _);
+        let m = t.offset(i as _).0.wrapping_mul(nquote0.0 as _);
         for j in 0..r_limbs {
             let (h_mnj, l_mnj) = Limb(m).mul_hilo(*(n.offset(j as _)));
             let (s, c1) = t.offset((i + j) as _).add_overflow(l_mnj);
@@ -164,11 +179,11 @@ pub fn inv1(x: Limb) -> Limb {
     let mut y = 1;
     for i in 2..(Limb::BITS) {
         if 1 << (i - 1) < (x.wrapping_mul(y) % (1 << i)) {
-            y += 1 << i - 1;
+            y += 1 << (i - 1);
         }
     }
     if 1 << (Limb::BITS - 1) < x.wrapping_mul(y) {
-        y += 1 << Limb::BITS - 1;
+        y += 1 << (Limb::BITS - 1);
     }
     Limb(y as _)
 }
