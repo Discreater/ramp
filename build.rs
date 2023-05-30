@@ -1,9 +1,5 @@
 #![allow(unused_must_use)]
 
-extern crate cc;
-extern crate num_bigint;
-extern crate rustc_cfg;
-
 use std::env;
 use std::fs::File;
 use std::io::Write;
